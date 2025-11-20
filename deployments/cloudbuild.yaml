@@ -1,0 +1,30 @@
+steps:
+  # Install Firebase CLI
+  - name: "gcr.io/cloud-builders/npm"
+    id: InstallFirebaseCLI
+    entrypoint: "npm"
+    args: ["install", "-g", "firebase-tools"]
+
+  # Navigate to the functions directory and install dependencies
+  # Firebase Buildpacks handle this during the deploy step, so this might be optional
+  # - name: 'python:3.11-slim'
+  #   id: InstallDeps
+  #   entrypoint: 'pip'
+  #   args: ['install', '-r', 'functions/requirements.txt', '--user']
+  #   waitFor: ["InstallFirebaseCLI"]
+
+  # Deploy to Firebase Functions
+  - name: "gcr.io/cloud-builders/npm" # Use the image where firebase-tools is installed
+    id: DeployToFirebase
+    entrypoint: "firebase"
+    args: [
+      "deploy",
+      "--only", "functions",
+      "--project", "${PROJECT_ID}", # PROJECT_ID is a default Cloud Build substitution
+      "--non-interactive",
+      "--force"
+    ]
+    waitFor: ["InstallFirebaseCLI"]
+
+options:
+  logging: CLOUD_LOGGING_ONLY

@@ -1,0 +1,8 @@
+functions-framework==3.*
+google-cloud-aiplatform[agent_engines,adk,langchain,ag2,llama_index]>=1.112.0
+a2a-sdk>=0.3.4
+requests
+Flask
+google
+google-ads
+google-adk

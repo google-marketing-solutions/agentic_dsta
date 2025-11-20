@@ -1,0 +1,14 @@
+{
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "venv",
+        ".git",
+        "__pycache__"
+      ],
+      "runtime": "python311"
+    }
+  ]
+}
