@@ -13,26 +13,22 @@
 # limitations under the License.
 """Decision agent for managing SA360 campaigns."""
 
+from pathlib import Path
+from agentic_dsta.sa360_agent.tools.sa360_manager import SA360ManagerToolset
 from google.adk import agents
-from .tools.sa360_manager import SA360ManagerToolset
+import yaml
+
+# Load agent configuration from YAML file
+config_path = Path(__file__).parent / "config.yaml"
+with open(config_path, "r") as f:
+  config = yaml.safe_load(f)
+
+model = config["model"]
+instruction = config["instruction"]
 
 # The root_agent definition for the decision_agent.
-model = "gemini-2.0-flash"
 root_agent = agents.LlmAgent(
-    instruction="""
-      You are an SA360 Campaign Manager responsible for switching campaigns on and off.
-
-      Your responsibilities:
-      1. Extract customer_id and campaign_id from the user's request
-      2. Use the sa360_manager tool to enable or disable campaigns
-      3. Provide confirmation of the campaign status change
-
-      When users request to:
-      - "Turn on", "enable", "activate" a campaign: Use the tool to set the campaign status to ENABLED
-      - "Turn off", "disable", "pause" a campaign: Use the tool to set the campaign status to PAUSED
-
-      Always confirm the customer ID and campaign ID before making changes.
-      """,
+    instruction=instruction,
     model=model,
     name="sa360_agent",
     tools=[
