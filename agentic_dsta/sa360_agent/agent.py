@@ -14,7 +14,7 @@
 """Decision agent for managing SA360 campaigns."""
 
 from pathlib import Path
-from agentic_dsta.sa360_agent.tools.sa360_manager import SA360ManagerToolset
+from .tools.sa360_manager import SA360ManagerToolset
 from google.adk import agents
 import yaml
 

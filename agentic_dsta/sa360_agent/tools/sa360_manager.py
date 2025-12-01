@@ -22,11 +22,41 @@ from google.ads.googleads.errors import GoogleAdsException
 from google.protobuf import field_mask_pb2
 
 
+def list_accessible_customers():
+  """Lists customer IDs accessible to the authenticated user."""
+  try:
+    # Load credentials from environment variables, but omit login_customer_id
+    config_data = {
+        "developer_token": os.environ.get("GOOGLE_ADS_DEVELOPER_TOKEN"),
+        "client_id": os.environ.get("GOOGLE_ADS_CLIENT_ID"),
+        "client_secret": os.environ.get("GOOGLE_ADS_CLIENT_SECRET"),
+        "refresh_token": os.environ.get("GOOGLE_ADS_REFRESH_TOKEN"),
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "use_proto_plus": True,
+    }
+    client = google.ads.googleads.client.GoogleAdsClient.load_from_dict(
+        config_data
+    )
+    customer_service = client.get_service("CustomerService")
+    response = customer_service.list_accessible_customers()
+    return {"accessible_customers": response.resource_names}
+  except GoogleAdsException as ex:
+    print(f"Failed to list accessible customers: {ex}")
+    for error in ex.failure.errors:
+      print(f"Error: {error.error_code.name} - {error.message}")
+    return {"error": f"Failed to list accessible customers: {ex.failure}"}
+
+
 def get_google_ads_client(customer_id: str):
   """Initializes and returns a GoogleAdsClient for SA360.
 
   Assumes SA360 credentials are provided via environment variables similar to
   Google Ads credentials.
+  The Google Ads API is used for both Google Ads and Search Ads 360 (SA360).
+  This client connects to SA360 by authenticating with credentials
+  (developer token, OAuth2 tokens) that have access to the SA360 account
+  specified in 'customer_id', and by setting 'login_customer_id' to
+  this SA360 customer ID.
   """
   try:
     # Load credentials from environment variables.
@@ -113,9 +143,12 @@ class SA360ManagerToolset(BaseToolset):
     self._update_campaign_status_tool = FunctionTool(
         func=update_campaign_status,
     )
+    self._list_accessible_customers_tool = FunctionTool(
+        func=list_accessible_customers,
+    )
 
   async def get_tools(
       self, readonly_context: Optional[Any] = None
   ) -> List[FunctionTool]:
     """Returns a list of tools in this toolset."""
-    return [self._update_campaign_status_tool]
+    return [self._update_campaign_status_tool, self._list_accessible_customers_tool]
