@@ -12,3 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Firestore Agent - Agent for interacting with Google Cloud Firestore."""
+from .agent import root_agent

@@ -11,21 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Decision agent for managing Ads campaigns."""
+"""Marketing agent for managing Google Ads campaigns."""
 
 from google.adk import agents
-from .tools.google_ads_manager import GoogleAdsManagerToolset
+from .tools.google_ads_getter import GoogleAdsGetterToolset
+from .tools.google_ads_updater import GoogleAdsUpdaterToolset
 
 # The root_agent definition for the decision_agent.
 model = "gemini-2.0-flash"
 root_agent = agents.LlmAgent(
     instruction="""
-      You are a Google Ads Campaign Manager responsible for switching campaigns on and off.
+      You are a Google Ads Campaign Manager responsible for managing Google Ads campaigns.
 
       Your responsibilities:
-      1. Extract customer_id and campaign_id from the user's request
-      2. Use the google_ads_manager tool to enable or disable campaigns
-      3. Provide confirmation of the campaign status change
+      1. Extract information(campaign_id, customer_id) about the campaign from the user's request.
+      2. Use the google_ads_manager tool to fetch campaign details.
+      3. Use the google_ads_manager tool to enable or disable campaigns.
+      4. Provide confirmation of the campaign status change.
 
       When users request to:
       - "Turn on", "enable", "activate" a campaign: Use the tool to set the campaign status to ENABLED
@@ -36,6 +38,7 @@ root_agent = agents.LlmAgent(
     model=model,
     name="google_ads_agent",
     tools=[
-        GoogleAdsManagerToolset(),
+        GoogleAdsUpdaterToolset(),
+        GoogleAdsGetterToolset(),
     ],
 )

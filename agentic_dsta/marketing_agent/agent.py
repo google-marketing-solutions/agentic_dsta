@@ -13,10 +13,11 @@
 # limitations under the License.
 """Decision agent for managing marketing campaigns."""
 
+from google_ads_agent.tools.google_ads_getter import GoogleAdsGetterToolset
+from google_ads_agent.tools.google_ads_updater import GoogleAdsUpdaterToolset
 from api_hub_agent.tools.apihub_toolset import DynamicMultiAPIToolset
 from firestore_agent.tools.firestore_toolset import FirestoreToolset
 from google.adk import agents
-from google_ads_agent.tools.google_ads_manager import GoogleAdsManagerToolset
 
 
 # The root_agent definition for the marketing_agent.
@@ -40,7 +41,8 @@ root_agent = agents.LlmAgent(
     model=model,
     name="marketing_campaign_manager",
     tools=[
-        GoogleAdsManagerToolset(),
+        GoogleAdsGetterToolset(),
+        GoogleAdsUpdaterToolset(),
         DynamicMultiAPIToolset(),
         FirestoreToolset(),
     ],
