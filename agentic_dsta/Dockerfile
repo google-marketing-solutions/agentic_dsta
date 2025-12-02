@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY requirements.txt /app/
 # Use --no-cache-dir to reduce image size
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --require-hashes -r requirements.txt
 
 # Create a non-root user to run the application
 RUN adduser --disabled-password --gecos "" myuser
