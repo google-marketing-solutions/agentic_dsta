@@ -5,6 +5,10 @@ requests
 google
 google-ads
 google-adk
+google-adk[eval]
 google-cloud-firestore
 python-dotenv
 setuptools==80.9.0
+pytest
+coverage
+pytest-mock

@@ -9,3 +9,6 @@ google-ads
 google-adk
 gunicorn
 setuptools==80.9.0
+pytest
+coverage
+pytest-mock
