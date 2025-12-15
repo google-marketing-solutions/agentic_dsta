@@ -1,3 +1,1 @@
-output "instance_name" {
-  value = google_apihub_api_hub_instance.default.name
-}
+# No specific outputs needed for now, but good practice to have the file.

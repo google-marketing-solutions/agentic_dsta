@@ -37,17 +37,17 @@ resource "google_service_account" "run_sa" {
 }
 
 # IAM roles for Service Account
-# resource "google_project_iam_member" "run_sa_roles" {
-#   for_each = toset([
-#     "roles/datastore.user",
-#     "roles/apihub.viewer",infra/modules/apihub/variables.tf
-#     "roles/aiplatform.user",
-#     "roles/secretmanager.secretAccessor",
-#   ])
-#   project = var.project_id
-#   role    = each.key
-#   member  = "serviceAccount:${google_service_account.run_sa.email}"
-# }
+resource "google_project_iam_member" "run_sa_roles" {
+  for_each = toset([
+    "roles/datastore.user",
+    "roles/apihub.editor",
+    "roles/aiplatform.user",
+    "roles/secretmanager.secretAccessor",
+  ])
+  project = var.project_id
+  role    = each.key
+  member  = "serviceAccount:${google_service_account.run_sa.email}"
+}
 
 #--- Modules ---
 
@@ -82,9 +82,8 @@ module "apihub" {
   source          = "./modules/apihub"
   project_id      = var.project_id
   location        = var.region # This is the regional location for the instance itself
-  instance_id     = var.apihub_instance_id
   specs_dir       = "${path.module}/specs"
-  vertex_location = var.apihub_vertex_location # Pass the multi-region variable
+  vertex_location = var.apihub_vertex_location
 
   depends_on = [google_project_service.apis]
 }
@@ -181,7 +180,7 @@ resource "google_service_account" "scheduler_sa" {
   project      = var.project_id
 }
 
-# Grant scheduler SA permission to invoke cloud run service
+# # Grant scheduler SA permission to invoke cloud run service
 # resource "google_cloud_run_v2_service_iam_member" "scheduler_invoker" {
 #   provider = google-beta
 #   project  = module.cloud_run_service.project_id
@@ -191,7 +190,7 @@ resource "google_service_account" "scheduler_sa" {
 #   member   = "serviceAccount:${google_service_account.scheduler_sa.email}"
 # }
 
-# Scheduler job to trigger agent daily
+# # Scheduler job to trigger agent daily
 # resource "google_cloud_scheduler_job" "dsta_automation" {
 #   project     = var.project_id
 #   region      = var.region
@@ -199,7 +198,7 @@ resource "google_service_account" "scheduler_sa" {
 #   description = "Daily trigger for DSTA marketing automation agent"
 #   schedule    = var.scheduler_cron
 #   time_zone   = "UTC"
-# 
+
 #   http_target {
 #     http_method = "POST"
 #     uri         = "${module.cloud_run_service.service_url}/sessions"
@@ -210,13 +209,13 @@ resource "google_service_account" "scheduler_sa" {
 #     headers = {
 #       "Content-Type" = "application/json"
 #     }
-# 
+
 #     oidc_token {
 #       service_account_email = google_service_account.scheduler_sa.email
 #       audience              = module.cloud_run_service.service_url
 #     }
 #   }
-# 
+
 #   depends_on = [google_cloud_run_v2_service_iam_member.scheduler_invoker]
 # }
 # Add this to the end of infra/main.tf

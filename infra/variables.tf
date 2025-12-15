@@ -74,12 +74,6 @@ variable "artifact_repository_id" {
 
 # --- API Hub Variables ---
 
-variable "apihub_instance_id" {
-  description = "The ID of the API Hub instance"
-  type        = string
-  default     = "default-instance"
-}
-
 # --- Scheduler Variables ---
 
 variable "scheduler_cron" {
@@ -136,5 +130,16 @@ variable "apihub_vertex_location" {
   description = "The multi-region for API Hub Vertex AI Search data (e.g., 'us' or 'eu')."
   type        = string
   default     = "us"
+}
+
+variable "account_email" {
+  description = "The service account email to use for API Hub initialization."
+  type        = string
+}
+
+variable "access_token" {
+  description = "The access token to use for API Hub initialization."
+  type        = string
+  sensitive   = true
 }
 

@@ -35,6 +35,11 @@ artifact_repository_id = "agentic-dsta-repo"
 # =============================================================================
 # API Hub Configuration
 # =============================================================================
+# API Hub Configuration
+# =============================================================================
+account_email = "agentic-dsta-runner@styagi-test.iam.gserviceaccount.com"
+access_token = access_token
+
 
 # The ID of the API Hub instance
 # Default: "default-instance"

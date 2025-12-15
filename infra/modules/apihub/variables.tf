@@ -8,18 +8,23 @@ variable "location" {
   type        = string
 }
 
-variable "instance_id" {
-  description = "The ID of the API Hub instance"
-  type        = string
-  default     = "default-instance"
-}
-
 variable "specs_dir" {
   description = "Path to the directory containing OpenAPI specs"
   type        = string
 }
 
 variable "vertex_location" {
-  description = "The multi-region for Vertex AI Search data (e.g., 'us' or 'eu')."
+  description = "The multi-region for API Hub Vertex AI Search data (e.g., 'us' or 'eu')."
   type        = string
+}
+
+variable "account_email" {
+  description = "The service account email to use for API Hub initialization."
+  type        = string
+}
+
+variable "access_token" {
+  description = "The access token to use for API Hub initialization."
+  type        = string
+  sensitive   = true
 }

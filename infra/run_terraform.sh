@@ -1,11 +1,15 @@
 #!/bin/bash
 set -e
 
+# /google/bin/releases/g3terraform/runner_main --base_service_dir=$(pwd) --config_dir=. "$@"
+
 # --- Configuration ---
 CONFIG_FILE="config.yaml"
 TFVARS_FILE="terraform.tfvars"
 IMAGE_BUILD_SCRIPT="./scripts/build_image.sh"
 TFVARS_GEN_SCRIPT="./scripts/generate_tfvars.py"
+
+# gcloud builds submit --tag us-central1-docker.pkg.dev/styagi-test/agentic-dsta-repo/agentic-dsta
 
 # --- Functions ---
 function get_config_value() {

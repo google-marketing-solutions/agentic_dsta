@@ -1,0 +1,146 @@
+openapi: 3.0.0
+info:
+  title: Google Air Quality API
+  description: API for retrieving air quality forecast data
+  version: 1.0.0
+servers:
+  - url: https://airquality.googleapis.com/v1
+    description: Production server
+security:
+  - ApiKeyAuth: []
+paths:
+  /forecast:lookup:
+    post:
+      operationId: lookupForecast
+      summary: Get air quality forecast for a location
+      description: Returns air quality forecast data for the specified location
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                location:
+                  type: object
+                  properties:
+                    latitude:
+                      type: number
+                      format: double
+                    longitude:
+                      type: number
+                      format: double
+                dateTime:
+                  type: string
+                  format: date-time
+                  description: The date and time for the start of the forecast.
+                period:
+                  type: string
+                  description: A duration for the forecast length.
+                pageSize:
+                  type: integer
+                  description: The maximum number of hourly forecast records to return per page.
+                pageToken:
+                  type: string
+                  description: A page token received from a previous forecast call.
+                extraComputations:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - EXTRA_COMPUTATION_UNSPECIFIED
+                      - HEALTH_RECOMMENDATIONS
+                      - POLLUTANT_ADDITIONAL_INFO
+                      - DOMINANT_POLLUTANT_CONCENTRATION
+                      - LOCAL_AQI
+                      - POLLUTANT_CONCENTRATION
+                uaqi:
+                  type: boolean
+                  description: If set to true, the Universal Air Quality Index will be included in the response.
+                languageCode:
+                  type: string
+                  description: The language code to return the response in.
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hourlyForecasts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        dateTime:
+                          type: string
+                          format: date-time
+                        indexes:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              code:
+                                type: string
+                              displayName:
+                                type: string
+                              aqi:
+                                type: integer
+                              aqiDisplay:
+                                type: string
+                              color:
+                                type: object
+                                properties:
+                                  red:
+                                    type: number
+                                    format: float
+                                  green:
+                                    type: number
+                                    format: float
+                                  blue:
+                                    type: number
+                                    format: float
+                                  alpha:
+                                    type: integer
+                              category:
+                                type: string
+                              dominantPollutant:
+                                type: string
+                        pollutants:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              code:
+                                type: string
+                              displayName:
+                                type: string
+                              concentration:
+                                type: object
+                                properties:
+                                  value:
+                                    type: number
+                                    format: float
+                                  units:
+                                    type: string
+                        healthRecommendations:
+                          type: object
+                          properties:
+                            generalPopulation:
+                              type: string
+                  nextPageToken:
+                    type: string
+                  regionCode:
+                    type: string
+        '400':
+          description: Bad request - invalid parameters
+        '401':
+          description: Unauthorized - invalid or missing API key
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: query
+      name: key
+      description: Google API Key for Air Quality API
