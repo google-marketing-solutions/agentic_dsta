@@ -21,30 +21,7 @@ from google.adk.tools.function_tool import FunctionTool
 import google.ads.googleads.client
 from google.ads.googleads.errors import GoogleAdsException
 from google.protobuf import field_mask_pb2
-
-
-def get_google_ads_client(customer_id: str):
-  """Initializes and returns a GoogleAdsClient."""
-  try:
-    # Load credentials from environment variables.
-    config_data = {
-        "login_customer_id": customer_id,
-        "developer_token": os.environ.get("GOOGLE_ADS_DEVELOPER_TOKEN"),
-        "client_id": os.environ.get("GOOGLE_ADS_CLIENT_ID"),
-        "client_secret": os.environ.get("GOOGLE_ADS_CLIENT_SECRET"),
-        "refresh_token": os.environ.get("GOOGLE_ADS_REFRESH_TOKEN"),
-        "token_uri": "https://oauth2.googleapis.com/token",
-        "use_proto_plus": True,
-    }
-    client = google.ads.googleads.client.GoogleAdsClient.load_from_dict(
-        config_data
-    )
-    return client
-  except GoogleAdsException as ex:
-    print(f"Failed to create GoogleAdsClient: {ex}")
-    for error in ex.failure.errors:
-      print(f"Error: {error.error_code} - {error.message}")
-    return None
+from .google_ads_client import get_google_ads_client
 
 def update_campaign_status(customer_id: str, campaign_id: str, status: str):
   """Enables or disables a Google Ads campaign.

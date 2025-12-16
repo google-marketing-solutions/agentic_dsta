@@ -67,6 +67,7 @@ The following diagram illustrates the architecture of the Agentic Dynamic Signal
     gcloud auth login
     gcloud config set project [YOUR_PROJECT_ID]
     ```
+
 *   The user or service account running the deployment must have the `roles/owner` permission on the project, or a combination of the following roles:
     *   `roles/editor`
     *   `roles/project.iamAdmin`
@@ -77,10 +78,11 @@ The following diagram illustrates the architecture of the Agentic Dynamic Signal
     *   `roles/run.admin`
     *   `roles/iam.serviceAccountAdmin`
     *   `roles/secretmanager.admin`
+    * [TBD]
 
 ### 5.2. Local Environment
 
-*   **Terraform:** Version 1.0 or later.
+*   **Terraform:** Version 1.14.2 or later.
 *   **Python:** Version 3.10 or later.
 *   **Git:** For cloning the repository.
 
