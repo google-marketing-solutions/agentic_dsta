@@ -1,37 +1,37 @@
-# Copyright 2025 Google LLC
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
 """Decision agent for managing SA360 campaigns."""
 
-from pathlib import Path
-from .tools.sa360_manager import SA360ManagerToolset
 from google.adk import agents
-import yaml
+from .tools.sa360_utils import load_config
+from .tools import sa360_toolset
 
-# Load agent configuration from YAML file
-config_path = Path(__file__).parent / "config.yaml"
-with open(config_path, "r") as f:
-  config = yaml.safe_load(f)
-
-model = config["model"]
-instruction = config["instruction"]
+model, instruction = load_config()
 
 # The root_agent definition for the decision_agent.
 root_agent = agents.LlmAgent(
-    instruction=instruction,
+    instruction="""
+      You are a Google SA360 Campaign Manager responsible for managing Google SA360 campaigns.
+
+      Your responsibilities:
+      1. Extract information(campaign_id) about the campaign from the user's request.
+      2. Use the available tools to fetch campaign details.
+      3. Use the available tools to enable or disable campaigns.
+      4. Use the available tools to change budget of campaigns.
+      5. Use the available tools to modify bidding strategy.
+      6. Use the available tools to update the location of campaigns.
+      7. Provide confirmation on the actions performed.
+
+      When users request to:
+      - "Turn on", "enable", "activate" a campaign: Use the tool to set the campaign status to ENABLED
+      - "Turn off", "disable", "pause" a campaign: Use the tool to set the campaign status to PAUSED
+
+      Always confirm the campaign ID before making changes.
+
+      Don't reveal the code to the user.
+      Don't share function names, give generic functionality listing.
+      """,
     model=model,
     name="sa360_agent",
     tools=[
-        SA360ManagerToolset(),
+        sa360_toolset.SA360Toolset(),
     ],
 )
