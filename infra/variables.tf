@@ -15,15 +15,22 @@ variable "location" {
   default     = "" # If empty, var.region will be used
 }
 
+variable "resource_prefix" {
+  description = "A prefix for all resource names"
+  type        = string
+  default     = "agentic-dsta"
+}
+
 variable "service_name" {
   description = "The name of the Cloud Run service"
   type        = string
-  default     = "agentic-dsta"
+  default     = null
 }
 
 variable "image_url" {
   description = "The URL of the container image in Artifact Registry. Set by CI/CD."
   type        = string
+  default     = ""
 }
 
 variable "container_port" {
@@ -41,7 +48,105 @@ variable "allow_unauthenticated" {
 variable "service_account_email" {
   description = "Service account email for the Cloud Run service instance. If not provided, a dedicated SA will be created."
   type        = string
-  default     = "" 
+  default     = ""
+}
+
+variable "run_sa_account_id" {
+  description = "The account id for the Cloud Run service account"
+  type        = string
+  default     = null
+}
+
+variable "run_sa_display_name" {
+  description = "The display name for the Cloud Run service account"
+  type        = string
+  default     = "Agentic DSTA Cloud Run Runner"
+}
+
+variable "enabled_apis" {
+  description = "The list of APIs to enable"
+  type        = list(string)
+  default = [
+    "run.googleapis.com",
+    "artifactregistry.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "iamcredentials.googleapis.com",
+    "compute.googleapis.com",
+    "secretmanager.googleapis.com",
+    "firestore.googleapis.com",
+    "apihub.googleapis.com",
+    "aiplatform.googleapis.com",
+    "iap.googleapis.com",
+    "googleads.googleapis.com",
+    "pollen.googleapis.com",
+    "weather.googleapis.com",
+  ]
+}
+
+variable "run_sa_roles" {
+  description = "The list of IAM roles for the Cloud Run service account"
+  type        = list(string)
+  default = [
+    "roles/datastore.user",
+    "roles/apihub.viewer",
+    "roles/aiplatform.user",
+    "roles/secretmanager.secretAccessor",
+    "roles/run.invoker"
+  ]
+}
+
+variable "storage_bucket_name" {
+  description = "The name of the storage bucket"
+  type        = string
+  default     = null
+}
+
+variable "storage_bucket_location" {
+  description = "The location of the storage bucket"
+  type        = string
+  default     = "US"
+}
+
+variable "storage_bucket_storage_class" {
+  description = "The storage class of the storage bucket"
+  type        = string
+  default     = "STANDARD"
+}
+
+variable "storage_bucket_force_destroy" {
+  description = "Whether to force destroy the storage bucket"
+  type        = bool
+  default     = false
+}
+
+variable "storage_bucket_uniform_bucket_level_access" {
+  description = "Whether to enable uniform bucket level access"
+  type        = bool
+  default     = true
+}
+
+variable "storage_bucket_public_access_prevention" {
+  description = "The public access prevention setting for the storage bucket"
+  type        = string
+  default     = "enforced"
+}
+
+variable "storage_bucket_retention_duration_seconds" {
+  description = "The retention duration in seconds for the storage bucket"
+  type        = number
+  default     = 604800
+}
+
+variable "scheduler_sa_account_id" {
+  description = "The account id for the scheduler service account"
+  type        = string
+  default     = null
+}
+
+variable "scheduler_sa_display_name" {
+  description = "The display name for the scheduler service account"
+  type        = string
+  default     = "DSTA Scheduler SA"
 }
 
 # --- Firestore Variables ---
@@ -49,13 +154,7 @@ variable "service_account_email" {
 variable "firestore_database_name" {
   description = "The name of the Firestore database"
   type        = string
-  default     = "dsta-agentic-firestore"
-}
-
-variable "firestore_location_id" {
-  description = "The location ID for the Firestore database (e.g. nam5 for us-central)"
-  type        = string
-  default     = "nam5"
+  default     = null
 }
 
 variable "firestore_database_type" {
@@ -69,7 +168,7 @@ variable "firestore_database_type" {
 variable "artifact_repository_id" {
   description = "The ID of the Artifact Registry repository"
   type        = string
-  default     = "agentic-dsta-repo"
+  default     = null
 }
 
 # --- API Hub Variables ---
@@ -97,45 +196,11 @@ variable "gcp_apis" {
 }
 
 # --- Service Accounts and IAM ---
-variable "run_sa_account_id" {
-  description = "The account ID for the Cloud Run service account."
-  type        = string
-  default     = "agentic-dsta-runner"
-}
-
-variable "run_sa_display_name" {
-  description = "The display name for the Cloud Run service account."
-  type        = string
-  default     = "Agentic DSTA Cloud Run Runner"
-}
-
-variable "run_sa_roles" {
-  description = "IAM roles to grant to the Cloud Run service account."
-  type        = list(string)
-  default = [
-    "roles/datastore.user",
-    "roles/apihub.editor",
-    "roles/aiplatform.user",
-    "roles/secretmanager.secretAccessor",
-  ]
-}
-
-variable "scheduler_sa_account_id" {
-  description = "The account ID for the Cloud Scheduler service account."
-  type        = string
-  default     = "dsta-scheduler"
-}
-
-variable "scheduler_sa_display_name" {
-  description = "The display name for the Cloud Scheduler service account."
-  type        = string
-  default     = "DSTA Scheduler SA"
-}
 
 variable "agentic_dsta_sa_account_id" {
   description = "The account ID for agentic-dsta-sa service account to use in scheduler jobs."
   type        = string
-  default     = "agentic-dsta-sa"
+  default     = null
 }
 
 variable "run_invoker_role" {
@@ -184,7 +249,7 @@ variable "run_service_env_vars" {
 variable "dsta_automation_scheduler_job_name" {
   description = "Name of dsta-automation scheduler job."
   type        = string
-  default     = "dsta-daily-automation"
+  default     = null
 }
 
 variable "dsta_automation_scheduler_job_description" {
@@ -214,7 +279,7 @@ variable "dsta_automation_query" {
 variable "sa_session_init_scheduler_job_name" {
   description = "Name of sa-session-init-job scheduler job."
   type        = string
-  default     = "sa-session-init-job"
+  default     = null
 }
 
 variable "sa_session_init_scheduler_job_description" {
@@ -244,7 +309,7 @@ variable "sa_session_init_scheduler_job_attempt_deadline" {
 variable "sa_run_sse_scheduler_job_name" {
   description = "Name of sa-run-sse-job scheduler job."
   type        = string
-  default     = "sa-run-sse-job"
+  default     = null
 }
 
 variable "sa_run_sse_scheduler_job_description" {
@@ -296,53 +361,18 @@ variable "scheduler_cron" {
 }
 
 # --- Secrets ---
-
-variable "google_api_key" {
-  description = "Google API Key"
-  type        = string
-  sensitive   = true
-}
-
-variable "google_ads_developer_token" {
-  description = "Google Ads Developer Token"
-  type        = string
-  sensitive   = true
-}
-
-variable "google_ads_client_id" {
-  description = "Google Ads Client ID"
-  type        = string
-  sensitive   = true
-}
-
-variable "google_ads_client_secret" {
-  description = "Google Ads Client Secret"
-  type        = string
-  sensitive   = true
-}
-
-variable "google_ads_refresh_token" {
-  description = "Google Ads Refresh Token"
-  type        = string
-  sensitive   = true
-}
-
-variable "google_pollen_api_key" {
-  description = "Google Pollen API Key"
-  type        = string
-  sensitive   = true
-}
-
-variable "google_weather_api_key" {
-  description = "Google Weather API Key"
-  type        = string
-  sensitive   = true
-}
+# Secrets are now managed by the deploy.sh script and read directly by the secret_manager module.
 
 variable "apihub_vertex_location" {
   description = "The multi-region for API Hub Vertex AI Search data (e.g., 'us' or 'eu')."
   type        = string
   default     = "us"
+}
+
+variable "additional_secrets" {
+  description = "A list of additional secret names to be created and managed for custom APIs."
+  type        = list(string)
+  default     = []
 }
 
 variable "account_email" {
@@ -355,4 +385,6 @@ variable "access_token" {
   type        = string
   sensitive   = true
 }
+
+
 

@@ -106,12 +106,13 @@ Follow the official Google Ads API documentation to obtain your developer token,
 
 2.  **OAuth2 Client ID and Client Secret:**
     *   Configure an OAuth2 consent screen and create credentials for a **Desktop app**. This will provide you with a client ID and client secret. Follow the guide at [Create a Client ID and Client Secret](https://developers.google.com/google-ads/api/docs/oauth/cloud-project#create_a_client_id_and_client_secret).
+    *   **Important:** On your OAuth consent screen configuration, you must add the Google Ads API scope: `https://www.googleapis.com/auth/adwords`.
 
 3.  **Refresh Token:**
     *   You must generate a long-lived refresh token that the application can use to obtain new access tokens. The Google Ads API provides a [standalone script](https://github.com/googleads/google-ads-python/blob/main/examples/authentication/generate_user_credentials.py) to help with this.
     *   Download and run the `generate_user_credentials.py` script from the Google Ads Python client library. You will be prompted to authorize access, and the script will output a refresh token.
 
-Once you have collected all these credentials, you can populate them in the `config.yaml` file.
+Once you have collected all these credentials, have them ready. You will be prompted to enter them securely during the first run of the deployment script. You do **not** need to put them in any file.
 
 ### 6.3. Google Ads API Credentials (Service Account Flow) - TBD
 
@@ -139,7 +140,7 @@ cd gta-solutions/infra
 
 ### Step 2: Configure Your Deployment
 
-All deployment parameters are managed in the `config.yaml` file. Before deploying, you must create this file and populate it with your specific settings.
+All deployment parameters are managed in the `config.yaml` file.
 
 1.  **Create the configuration file:**
     Copy the provided example file:
@@ -148,7 +149,7 @@ All deployment parameters are managed in the `config.yaml` file. Before deployin
     ```
 
 2.  **Edit the configuration:**
-    Open `config.yaml` and fill in the values for your environment. A detailed explanation of each parameter is provided in the **Configuration Parameters** section below.
+    Open `config.yaml` and fill in the non-sensitive values for your environment, such as your `project_id`. You do **not** need to add any secret credentials to this file. A detailed explanation of each parameter is provided in the **Configuration Parameters** section below.
 
 ### Step 3: Run the Deployment Script
 
@@ -158,11 +159,16 @@ Execute the `deploy.sh` script from the `infra` directory:
 bash deploy.sh
 ```
 
+**First-Time Setup:** The first time you run this script, it will detect that your secret credentials are not yet stored. It will securely prompt you to enter each required credential one by one. These are the credentials you collected in the "Generating Required Credentials" step.
+
 This script will:
-1.  Build the application's Docker image.
-2.  Push the image to Google Artifact Registry.
-3.  Generate a `terraform.tfvars` file from your `config.yaml`.
-4.  Initialize and apply the Terraform configuration to deploy all the necessary infrastructure.
+1.  Check for the required secrets in Google Secret Manager and create them if they don't exist (this is the interactive part).
+2.  Build the application's Docker image.
+3.  Push the image to Google Artifact Registry.
+4.  Generate a `terraform.tfvars` file from your `config.yaml`.
+5.  Initialize and apply the Terraform configuration to deploy all the necessary infrastructure.
+
+On subsequent runs, the script will see that the secrets already exist and will skip straight to the deployment, making it fully automatable.
 
 The deployment will take several minutes to complete.
 
@@ -173,13 +179,6 @@ The following table describes each parameter in the `config.yaml` file:
 | Parameter                      | Description                                                                                             | Example                                       |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
 | `project_id`                   | **Required.** Your Google Cloud Project ID.                                                              | `"[YOUR_PROJECT_ID]"`                        |
-| `google_api_key`               | **Required.** Your Google API key for accessing Google services.                                        | `"[YOUR_GOOGLE_API_KEY]"`                               |
-| `google_ads_developer_token`   | **Required.** Your Google Ads developer token.                                                          | `"[YOUR_DEVELOPER_TOKEN]"`                                 |
-| `google_ads_client_id`         | **Required.** The client ID for your Google Ads OAuth2 application.                                     | `"[YOUR_CLIENT_ID]"`                                |
-| `google_ads_client_secret`     | **Required.** The client secret for your Google Ads OAuth2 application.                                 | `"[YOUR_CLIENT_SECRET]"`                               |
-| `google_ads_refresh_token`     | **Required.** The refresh token for your Google Ads OAuth2 application.                                 | `"[YOUR_REFRESH_TOKEN]"`                              |
-| `google_pollen_api_key`        | **Required.** Your API key for the Google Pollen API.                                                   | `"[YOUR_POLLEN_API_KEY]"`                               |
-| `google_weather_api_key`       | **Required.** Your API key for the Google Weather API.                                                  | `"[YOUR_WEATHER_API_KEY]"`                               |
 | `region`                       | The primary Google Cloud region for deploying resources.                                                | `"us-central1"`                               |
 | `service_name`                 | The name for your Cloud Run service.                                                                    | `"cloud-run-dsta-tf"`                         |
 | `allow_unauthenticated`        | If `true`, the Cloud Run service will be publicly accessible. Set to `false` for production.           | `false`                                       |
@@ -255,7 +254,59 @@ The Google Sheet must contain at least the following columns:
 
 The agent will find the campaign by its name and update the `Status` column to either `Active` or `Paused` based on its decision logic.
 
-## 10. Usage
+## 10. Extending the Solution with More APIs
+
+A key feature of this solution is its ability to dynamically load new APIs at runtime without requiring any code changes or redeployments. If you have an API with an OpenAPI specification, you can make it available to the agent by following these steps.
+
+### Step 1: Register Your API in API Hub
+
+Follow the Google Cloud documentation to [register an API](https://cloud.google.com/api-hub/docs/manage-apis-register) in your project's API Hub instance. You will need to provide the OpenAPI spec for your API.
+
+### Step 2: Configure API Key Authentication (If Required)
+
+When the agent discovers your new API, it automatically attempts to find an API key for it by checking for secrets (environment variables) in a specific order of preference:
+
+1.  A specific key for your API: `[YOUR_API_DISPLAY_NAME]_API_KEY`
+2.  A generic, fallback key: `GOOGLE_API_KEY`
+
+This gives you two flexible options for managing credentials.
+
+#### Option A: Use the Existing `GOOGLE_API_KEY`
+
+If your new API can use the same generic `GOOGLE_API_KEY` that the Pollen and Weather APIs use, no infrastructure changes are needed.
+
+1.  **Register your API in API Hub.**
+2.  **Restart your Cloud Run service.** You can do this from the Google Cloud Console. A restart is sufficient for the agent to re-initialize and discover the new API.
+
+The agent will discover the API, fail to find a specific key, and automatically fall back to using the `GOOGLE_API_KEY` that is already available to it.
+
+#### Option B: Provide a New, Dedicated API Key
+
+If your new API requires its own unique key for security or tracking purposes, you can securely provision it with a quick infrastructure update.
+
+1.  **Register your API in API Hub.**
+2.  **Determine the Secret Name:** The agent will look for a secret matching your API's display name. For example, if the display name is "My Stock Service", the required secret name is `MY_STOCK_SERVICE_API_KEY`.
+3.  **Add the Secret Name to `config.yaml`:**
+    Open your `infra/config.yaml` file and add this secret name to the `additional_secrets` list.
+    ```yaml
+    additional_secrets:
+      - MY_STOCK_SERVICE_API_KEY
+    ```
+4.  **Run the Deployment Script to Provision the Secret:**
+    Execute the `deploy.sh` script again. This step **does not rebuild or redeploy your application code**. It performs a quick infrastructure update to:
+    *   Prompt you for the new secret's value.
+    *   Store it securely in Secret Manager.
+    *   Grant your Cloud Run service permission to access it.
+    *   Update the Cloud Run service to mount the secret.
+
+    ```bash
+    bash deploy.sh
+    ```
+    Because you added a new secret name, the script will interactively guide you through the one-time setup for that secret.
+
+Once the script completes, the agent will have immediate access to the new key and will dynamically load the new API on its next run.
+
+## 11. Usage
 
 This deployment provides two primary ways to interact with the agentic framework:
 

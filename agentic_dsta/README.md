@@ -1,8 +1,8 @@
 ## Test your agent locally
 
-1.  **Run the FastAPI server locally with Python:**
+1.  **Run the FastAPI server locally with python:**
 
-    1.  **Set Up Environment Variables:** Create a `.env` file by copying the
+    1.  **Set up environment variables:** Create a `.env` file by copying the
         `.env.example` template:
         ```bash
         cp .env.example .env
@@ -10,7 +10,7 @@
         Then, open the `.env` file and replace the placeholder values with your
         actual credentials.
 
-    2.  **Load Environment Variables:** After setting up your `.env` file, load the variables into your current shell session by running:
+    2.  **Load environment variables:** After setting up your `.env` file, load the variables into your current shell session by running:
 
         ```bash
         export $(grep -v '^#' .env | xargs)
@@ -32,9 +32,9 @@
 
         This will start the FastAPI server, on `http://0.0.0.0:8080`.
 
-## Deployment to Google Cloud Run
+## Deploy to Google Cloud Run
 
-**Prerequisites: Enable Required APIs**
+**Prerequisites: Enable required APIs**
 
 Before deploying, ensure that you have enabled all the necessary Google Cloud APIs. You can do this by running the following command:
 
@@ -51,7 +51,11 @@ gcloud services enable \
 
 To deploy this application to Google Cloud Run, follow these steps:
 
-1.  **Store Secrets in Secret Manager:** For each secret in your `.env` file,
+**IAM Roles**
+
+The necessary IAM roles for the Cloud Run service account are automatically applied by the Terraform deployment script. For a complete list of roles, refer to the `implementation_guide.md`.
+
+1.  **Store secrets in Secret Manager:** For each secret in your `.env` file,
         create a corresponding secret in Google Cloud Secret Manager.
 
         ```bash
@@ -65,7 +69,7 @@ To deploy this application to Google Cloud Run, follow these steps:
         done < .env
         ```
 
-2.  **Grant Access to Cloud Run:** Grant the Cloud Run service's service account the "Secret Manager Secret Accessor" role for each secret. Replace `<your-cloud-run-service-name>` with your actual service name.
+2.  **Grant access to Cloud Run:** Grant the Cloud Run service's service account the "Secret Manager Secret Accessor" role for each secret. Replace `<your-cloud-run-service-name>` with your actual service name.
 
         ```bash
         SERVICE_NAME="<your-cloud-run-service-name>"
@@ -83,7 +87,7 @@ To deploy this application to Google Cloud Run, follow these steps:
         done < .env
         ```
 
-3.  **Deploy a Private Service to Cloud Run:** To use IAP, your service must be private. Deploy it with the `--no-allow-unauthenticated` flag.
+3.  **Deploy a private service to Cloud Run:** To use IAP, your service must be private. Deploy it with the `--no-allow-unauthenticated` flag.
 
         ```bash
         gcloud run deploy agentic-dsta \
@@ -103,7 +107,7 @@ To deploy this application to Google Cloud Run, follow these steps:
     *   `--set-secrets`: Maps secrets from Secret Manager to environment variables for the Cloud Run service.
     *   `--no-allow-unauthenticated`: Makes the service private, requiring authentication for access. This is essential for IAP.
 
-4.  **Configure IAP Access:** Grant user accounts permission to access your service through IAP. Before you begin, ensure you have configured an OAuth consent screen. Then, for each user, run the following command, replacing `<service-name>` and `<your-email@example.com>`:
+4.  **Configure IAP access:** Grant user accounts permission to access your service through IAP. Before you begin, ensure you have configured an OAuth consent screen. Then, for each user, run the following command, replacing `<service-name>` and `<your-email@example.com>`:
 
         ```bash
         gcloud beta services identity create --service=iap.googleapis.com --project=<PROJECT_ID>
@@ -115,7 +119,7 @@ To deploy this application to Google Cloud Run, follow these steps:
           --role='roles/run.invoker'
         ```
 
-5.  **Verify the Deployment:** After deploying, you can verify that the secrets are correctly mounted as environment variables by running the following command. Replace `<service-name>` with your service name.
+5.  **Verify the deployment:** After deploying, you can verify that the secrets are correctly mounted as environment variables by running the following command. Replace `<service-name>` with your service name.
 
     ```bash
     gcloud run services describe <service-name> --region=$GOOGLE_CLOUD_LOCATION --project=$GOOGLE_CLOUD_PROJECT --format='yaml(spec.template.spec.containers[0].env)'
@@ -123,12 +127,12 @@ To deploy this application to Google Cloud Run, follow these steps:
 
     The output will show a list of environment variables. You should see entries where the `name` corresponds to your secret key (e.g., `GOOGLE_API_KEY`) and the `valueFrom` section indicates that the value is being pulled from Secret Manager. You will not see the actual secret value in this output, which is the expected secure behavior.
 
-## Security Best Practices
+## Security best practices
 
-*   **Dependency Pinning:** All dependencies in `requirements.txt` are pinned to specific versions. This mitigates the risk of supply chain attacks and ensures that your deployments are predictable. Regularly update your dependencies to patch known vulnerabilities.
-*   **Principle of Least Privilege:** The `Dockerfile` creates a non-root user to run the application, reducing the potential impact of a container compromise. The Cloud Run service account is granted only the "Secret Manager Secret Accessor" and "Cloud Run Invoker" roles, ensuring it has only the permissions it needs to function.
+*   **Dependency pinning:** All dependencies in `requirements.txt` are pinned to specific versions. This mitigates the risk of supply chain attacks and ensures that your deployments are predictable. Regularly update your dependencies to patch known vulnerabilities.
+*   **Principle of least privilege:** The `Dockerfile` creates a non-root user to run the application, reducing the potential impact of a container compromise. The Cloud Run service account is granted only the "Secret Manager Secret Accessor" and "Cloud Run Invoker" roles, ensuring it has only the permissions it needs to function.
 *   **CORS:** For production environments, the `ALLOWED_ORIGINS` in `main.py` should be updated to a more restrictive list of trusted domains.
-*   **Secret Management:** All secrets are managed through Google Cloud Secret Manager, and the `.env` file is included in `.gitignore` to prevent accidental exposure.
+*   **Secret management:** All secrets are managed through Google Cloud Secret Manager, and the `.env` file is included in `.gitignore` to prevent accidental exposure.
 
 **Important:** Never hardcode sensitive credentials. Using environment variables
 ensures these are handled more securely.

@@ -8,13 +8,9 @@ google_ads_refresh_token   = "your-google-ads-refresh-token"
 google_pollen_api_key      = "your-google-pollen-api-key"
 google_weather_api_key     = "your-google-weather-api-key"
 region                     = "us-central1"
-service_name               = "your-cloud-run-service-name"
+resource_prefix            = "agentic-dsta"
 allow_unauthenticated      = false
 # =============================================================================
-
-# The name of the Firestore database
-# Default: "dsta-agentic-firestore"
-firestore_database_name = "your-firestore-db-name"
 
 # The location ID for the Firestore database (e.g., nam5 for us-central)
 # Default: "nam5"
@@ -23,14 +19,6 @@ firestore_location_id = "nam5"
 # The type of the Firestore database (FIRESTORE_NATIVE or DATASTORE_MODE)
 # Default: "FIRESTORE_NATIVE"
 firestore_database_type = "FIRESTORE_NATIVE"
-
-# =============================================================================
-# Artifact Registry Configuration
-# =============================================================================
-
-# The ID of the Artifact Registry repository
-# Default: "agentic-dsta-repo"
-artifact_repository_id = "your-artifact-repo-id"
 
 # =============================================================================
 # API Hub Configuration

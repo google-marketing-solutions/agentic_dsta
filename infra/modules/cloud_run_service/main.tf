@@ -53,11 +53,7 @@ resource "google_cloud_run_v2_service" "default" {
     # timeout = "300s"
   }
 
-  lifecycle {
-    ignore_changes = [
-      template[0].containers[0].image, # Allow image to be updated by CI/CD
-    ]
-  }
+
 }
 
 # IAM policy for invoker role

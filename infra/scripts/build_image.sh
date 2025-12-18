@@ -1,21 +1,21 @@
 #!/bin/bash
 set -e
 
-# Usage: ./build_image.sh <PROJECT_ID> [REGION]
+# Usage: ./build_image.sh <PROJECT_ID> <REGION> <REPO_NAME> <IMAGE_NAME>
 PROJECT_ID=$1
-REGION=${2:-us-central1}
-REPO_NAME="agentic-dsta-repo"
-IMAGE_NAME="agentic-dsta"
+REGION=$2
+REPO_NAME=$3
+IMAGE_NAME=$4
 TAG="latest"
 
-if [ -z "$PROJECT_ID" ]; then
-  echo "Error: PROJECT_ID is required."
-  echo "Usage: $0 <PROJECT_ID> [REGION]"
+if [ -z "$PROJECT_ID" ] || [ -z "$REGION" ] || [ -z "$REPO_NAME" ] || [ -z "$IMAGE_NAME" ]; then
+  echo "Error: Missing required arguments."
+  echo "Usage: $0 <PROJECT_ID> <REGION> <REPO_NAME> <IMAGE_NAME>"
   exit 1
 fi
 
 echo "1. Enabling required APIs (Artifact Registry & Cloud Build)..."
-gcloud services enable artifactregistry.googleapis.com cloudbuild.googleapis.com --project "$PROJECT_ID"
+gcloud services enable artifactregistry.googleapis.com cloudbuild.googleapis.com --project "$PROJECT_ID" >/dev/null 2>&1
 
 echo "2. Checking Artifact Registry repository '$REPO_NAME'..."
 if ! gcloud artifacts repositories describe "$REPO_NAME" --project "$PROJECT_ID" --location "$REGION" &>/dev/null; then
@@ -34,21 +34,20 @@ IMAGE_URL="$REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:$TAG"
 echo "3. Building and Pushing container image to: $IMAGE_URL"
 # Determine the source directory relative to this script
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SOURCE_DIR="$SCRIPT_DIR/../../agentic_dsta"
+# The source directory is two levels up from the script directory
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SOURCE_DIR="$PROJECT_ROOT/agentic_dsta"
 
 if [ ! -d "$SOURCE_DIR" ]; then
   echo "Error: Source directory not found at $SOURCE_DIR"
   exit 1
 fi
 
-gcloud builds submit "$SOURCE_DIR" \
+BUILD_ID=$(gcloud builds submit "$SOURCE_DIR" \
   --tag "$IMAGE_URL" \
-  --project "$PROJECT_ID"
+  --project "$PROJECT_ID" \
+  --format='value(id)')
 
-echo ""
+# The image URL is now constructed in the deploy.sh script.
+
 echo "✅ Build Complete."
-echo "--------------------------------------------------------"
-echo "Set this value in your terraform.tfvars file:"
-echo ""
-echo "image_url = \"$IMAGE_URL\""
-echo "--------------------------------------------------------"
