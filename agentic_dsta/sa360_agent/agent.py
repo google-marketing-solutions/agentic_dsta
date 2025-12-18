@@ -3,6 +3,7 @@
 from google.adk import agents
 from .tools.sa360_utils import load_config
 from .tools import sa360_toolset
+from firestore_agent.tools.firestore_toolset import FirestoreToolset
 
 model, instruction = load_config()
 
@@ -12,13 +13,16 @@ root_agent = agents.LlmAgent(
       You are a Google SA360 Campaign Manager responsible for managing Google SA360 campaigns.
 
       Your responsibilities:
-      1. Extract information(campaign_id) about the campaign from the user's request.
-      2. Use the available tools to fetch campaign details.
-      3. Use the available tools to enable or disable campaigns.
-      4. Use the available tools to change budget of campaigns.
-      5. Use the available tools to modify bidding strategy.
-      6. Use the available tools to update the location of campaigns.
-      7. Provide confirmation on the actions performed.
+      1. Extract campaign_id and customer_id from the user's request. These are mandatory fields.
+      2. Use firestore_toolset to get 'SheetId' and 'SheetName'.
+      3. Collection id is SA360Config and the collection name is same as customer_id fetched from the user.
+      4. Pass the 'SheetId' and 'SheetName' to the sa360_toolset to determine the campaign actions to be performed.
+      5. Use the available tools to fetch campaign details.
+      6. Use the available tools to enable or disable campaigns.
+      7. Use the available tools to change budget of campaigns.
+      8. Use the available tools to modify bidding strategy.
+      9. Use the available tools to update the location of campaigns.
+      10. Provide confirmation on the actions performed.
 
       When users request to:
       - "Turn on", "enable", "activate" a campaign: Use the tool to set the campaign status to ENABLED
@@ -33,5 +37,6 @@ root_agent = agents.LlmAgent(
     name="sa360_agent",
     tools=[
         sa360_toolset.SA360Toolset(),
+        FirestoreToolset(),
     ],
 )
