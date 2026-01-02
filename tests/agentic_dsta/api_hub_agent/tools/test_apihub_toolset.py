@@ -7,7 +7,7 @@ import asyncio
 
 from agentic_dsta.api_hub_agent.tools import apihub_toolset
 
-class TestApiHubToolset(unittest.TestCase):
+class TestApiHubToolset(unittest.IsolatedAsyncioTestCase):
 
     @patch('agentic_dsta.api_hub_agent.tools.apihub_toolset.default')
     def test_get_access_token(self, mock_default):
@@ -83,7 +83,7 @@ class TestApiHubToolset(unittest.TestCase):
         mock_toolset_instance.get_tools = AsyncMock(return_value=[mock_tool])
         mock_adk_toolset.return_value = mock_toolset_instance
 
-        toolset = apihub_toolset.LazyLoadAPIToolset(cache_duration_seconds=0)
+        toolset = apihub_toolset.LazyLoadAPIToolset(cache_duration_seconds=60)
 
         # First call, should load
         tools = await toolset.get_tools()

@@ -45,10 +45,18 @@ def list_accessible_customers():
     response = customer_service.list_accessible_customers()
     return {"accessible_customers": response.resource_names}
   except GoogleAdsException as ex:
-    logger.error(f"Failed to list accessible customers: {ex}", exc_info=True)
+    logger.error("Failed to list accessible customers: %s", ex, exc_info=True)
     for error in ex.failure.errors:
-      logger.error(f"Google Ads API Error: {str(error.error_code)} - {error.message}", extra={'error_code': str(error.error_code), 'error_message': error.message})
-    return {"error": f"Failed to list accessible customers: {ex.failure}"}
+      logger.error(
+          "Google Ads API Error: %s - %s",
+          str(error.error_code),
+          error.message,
+          extra={
+              'error_code': str(error.error_code),
+              'error_message': error.message
+          }
+      )
+    raise RuntimeError(f"Failed to list accessible customers: {ex.failure}") from ex
 
 
 def get_google_ads_client(customer_id: str):
@@ -78,10 +86,24 @@ def get_google_ads_client(customer_id: str):
     )
     return client
   except GoogleAdsException as ex:
-    logger.error(f"Failed to create GoogleAdsClient: {ex}", exc_info=True, extra={'customer_id': customer_id})
+    logger.error(
+        "Failed to create GoogleAdsClient: %s",
+        ex,
+        exc_info=True,
+        extra={'customer_id': customer_id}
+    )
     for error in ex.failure.errors:
-      logger.error(f"Google Ads API Error: {str(error.error_code)} - {error.message}", extra={'customer_id': customer_id, 'error_code': str(error.error_code), 'error_message': error.message})
-    return None
+      logger.error(
+          "Google Ads API Error: %s - %s",
+          str(error.error_code),
+          error.message,
+          extra={
+              'customer_id': customer_id,
+              'error_code': str(error.error_code),
+              'error_message': error.message
+          }
+      )
+    raise RuntimeError(f"Failed to create GoogleAdsClient: {ex.failure}") from ex
 
 
 def update_campaign_status(customer_id: str, campaign_id: str, status: str):
@@ -97,7 +119,7 @@ def update_campaign_status(customer_id: str, campaign_id: str, status: str):
   """
   client = get_google_ads_client(customer_id)
   if not client:
-    return {"error": "Failed to get Google Ads client for SA360."}
+    raise RuntimeError("Failed to get Google Ads client for SA360.")
 
   campaign_service = client.get_service("CampaignService")
   campaign_op = client.get_type("CampaignOperation")
@@ -112,11 +134,7 @@ def update_campaign_status(customer_id: str, campaign_id: str, status: str):
   elif status == "PAUSED":
     campaign.status = CampaignStatusEnum.CampaignStatus.PAUSED
   else:
-    return {
-        "error": (
-            f"Invalid status provided: {status}. Use 'ENABLED' or 'PAUSED'."
-        )
-    }
+    raise ValueError(f"Invalid status provided: {status}. Use 'ENABLED' or 'PAUSED'.")
 
   client.copy_from(
       campaign_op.update_mask, field_mask_pb2.FieldMask(paths=["status"])
@@ -130,13 +148,36 @@ def update_campaign_status(customer_id: str, campaign_id: str, status: str):
   try:
     response = campaign_service.mutate_campaigns(request=request)
     campaign_response = response.results[0]
-    logger.info(f"Updated campaign '{campaign_response.resource_name}'", extra={'customer_id': customer_id, 'campaign_id': campaign_id, 'resource_name': campaign_response.resource_name})
+    logger.info(
+        "Updated campaign '%s'",
+        campaign_response.resource_name,
+        extra={
+            'customer_id': customer_id,
+            'campaign_id': campaign_id,
+            'resource_name': campaign_response.resource_name
+        }
+    )
     return {"success": True, "resource_name": campaign_response.resource_name}
   except GoogleAdsException as ex:
-    logger.error(f"Failed to update campaign: {ex}", exc_info=True, extra={'customer_id': customer_id, 'campaign_id': campaign_id, 'status': status})
+    logger.error(
+        "Failed to update campaign: %s",
+        ex,
+        exc_info=True,
+        extra={'customer_id': customer_id, 'campaign_id': campaign_id, 'status': status}
+    )
     for error in ex.failure.errors:
-      logger.error(f"Google Ads API Error: {error.error_code.name} - {error.message}", extra={'customer_id': customer_id, 'campaign_id': campaign_id, 'error_code': error.error_code.name, 'error_message': error.message})
-    return {"error": f"Failed to update campaign: {ex.failure}"}
+      logger.error(
+          "Google Ads API Error: %s - %s",
+          error.error_code.name,
+          error.message,
+          extra={
+              'customer_id': customer_id,
+              'campaign_id': campaign_id,
+              'error_code': error.error_code.name,
+              'error_message': error.message
+          }
+      )
+    raise RuntimeError(f"Failed to update campaign: {ex.failure}") from ex
 
 
 class SA360ManagerToolset(BaseToolset):

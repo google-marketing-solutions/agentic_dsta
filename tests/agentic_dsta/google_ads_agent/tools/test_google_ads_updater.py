@@ -54,8 +54,8 @@ class TestGoogleAdsUpdater(unittest.TestCase):
 
     @patch('agentic_dsta.google_ads_agent.tools.google_ads_updater.get_google_ads_client')
     def test_update_campaign_status_invalid(self, mock_get_google_ads_client):
-        result = google_ads_updater.update_campaign_status("12345", "67890", "INVALID")
-        self.assertIn('error', result)
+        with self.assertRaises(ValueError):
+            google_ads_updater.update_campaign_status("12345", "67890", "INVALID")
 
     @patch('agentic_dsta.google_ads_agent.tools.google_ads_updater.get_google_ads_client')
     def test_update_campaign_budget(self, mock_get_google_ads_client):
@@ -126,13 +126,13 @@ class TestGoogleAdsUpdater(unittest.TestCase):
 
         mock_budget_service.mutate_campaign_budgets.side_effect = GoogleAdsException(None, None, MagicMock(), "request_id")
 
-        result = google_ads_updater.update_shared_budget("12345", "budgets/123", 600000)
-        self.assertIn('error', result)
+        with self.assertRaises(RuntimeError):
+            google_ads_updater.update_shared_budget("12345", "customers/12345/campaignBudgets/123", 600000)
 
     @patch('agentic_dsta.google_ads_agent.tools.google_ads_updater.get_google_ads_client', return_value=None)
     def test_update_shared_budget_client_fail(self, mock_get_google_ads_client):
-        result = google_ads_updater.update_shared_budget("12345", "budgets/123", 600000)
-        self.assertEqual(result, {'error': 'Failed to get Google Ads client.'})
+        with self.assertRaises(RuntimeError):
+            google_ads_updater.update_shared_budget("12345", "customers/12345/campaignBudgets/123", 600000)
 
 if __name__ == '__main__':
     unittest.main()

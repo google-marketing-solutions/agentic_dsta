@@ -27,7 +27,7 @@
         and run the script:
 
         ```bash
-        python3 main.py
+        python3 -m agentic_dsta.main
         ```
 
         This will start the FastAPI server, on `http://0.0.0.0:8080`.

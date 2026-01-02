@@ -20,7 +20,7 @@ def get_campaign_details(campaign_id: str, _SHEET_ID: str, _SHEET_NAME: str) -> 
   """
   service = get_sheets_service()
   if not service:
-    return {"error": "Failed to get Google Sheets service."}
+    raise RuntimeError("Failed to get Google Sheets service.")
   try:
     sheet = service.spreadsheets()
     result = (
@@ -30,7 +30,7 @@ def get_campaign_details(campaign_id: str, _SHEET_ID: str, _SHEET_NAME: str) -> 
     )
     values = result.get("values", [])
     if not values:
-      return {"error": f"No data found in sheet '{_SHEET_NAME}'."}
+      raise ValueError(f"No data found in sheet '{_SHEET_NAME}'.")
 
     header = values[0]
     campaign_id_index = header.index("Campaign ID")
@@ -39,11 +39,11 @@ def get_campaign_details(campaign_id: str, _SHEET_ID: str, _SHEET_NAME: str) -> 
       if len(row) > campaign_id_index and row[campaign_id_index] == campaign_id:
         return dict(zip(header, row))
 
-    return {"error": f"Campaign with ID '{campaign_id}' not found."}
+    raise ValueError(f"Campaign with ID '{campaign_id}' not found.")
 
-  except (HttpError, ValueError, IndexError) as err:
+  except (HttpError, IndexError) as err:
     logging.exception(err)
-    return {"error": f"Failed to fetch campaign details: {err}"}
+    raise RuntimeError(f"Failed to fetch campaign details: {err}") from err
 
 
 def _update_campaign_property(
@@ -52,7 +52,7 @@ def _update_campaign_property(
   """Helper function to update a property for a campaign in the Google Sheet."""
   service = get_sheets_service()
   if not service:
-    return {"error": "Failed to get Google Sheets service."}
+    raise RuntimeError("Failed to get Google Sheets service.")
 
   try:
     sheet = service.spreadsheets()
@@ -64,7 +64,7 @@ def _update_campaign_property(
     values = result.get("values", [])
 
     if not values:
-      return {"error": f"No data found in sheet '{_SHEET_NAME}'."}
+      raise ValueError(f"No data found in sheet '{_SHEET_NAME}'.")
 
     header = values[0]
     try:
@@ -72,7 +72,7 @@ def _update_campaign_property(
       property_index = header.index(property_name)
     except ValueError as err:
       logging.exception(err)
-      return {"error": f"Column not found in sheet: {err}"}
+      raise ValueError(f"Column not found in sheet: {err}") from err
 
     row_to_update = -1
     for i, row in enumerate(values[1:]):
@@ -81,7 +81,7 @@ def _update_campaign_property(
         break
 
     if row_to_update == -1:
-      return {"error": f"Campaign with ID '{campaign_id}' not found."}
+      raise ValueError(f"Campaign with ID '{campaign_id}' not found.")
 
     property_column_letter = chr(ord("A") + property_index)
     range_to_update = f"{_SHEET_NAME}!{property_column_letter}{row_to_update}"
@@ -101,19 +101,23 @@ def _update_campaign_property(
         )
     }
 
-  except (HttpError, ValueError, IndexError) as err:
+  except (HttpError, IndexError) as err:
     logging.exception(err)
-    return {"error": f"Failed to update campaign property: {err}"}
+    raise RuntimeError(f"Failed to update campaign property: {err}") from err
 
 
 def enable_campaign(campaign_id: str, _SHEET_ID: str, _SHEET_NAME: str) -> Dict[str, Any]:
   """Enables an SA360 campaign by setting its status to 'ENABLED'."""
-  return _update_campaign_property(campaign_id, "Campaign status", "ENABLED", _SHEET_ID, _SHEET_NAME)
+  return _update_campaign_property(
+      campaign_id, "Campaign status", "ENABLED", _SHEET_ID, _SHEET_NAME
+  )
 
 
 def disable_campaign(campaign_id: str, _SHEET_ID: str, _SHEET_NAME: str) -> Dict[str, Any]:
   """Disables an SA360 campaign by setting its status to 'PAUSED'."""
-  return _update_campaign_property(campaign_id, "Campaign status", "PAUSED", _SHEET_ID, _SHEET_NAME)
+  return _update_campaign_property(
+      campaign_id, "Campaign status", "PAUSED", _SHEET_ID, _SHEET_NAME
+  )
 
 
 def update_campaign_geolocation(

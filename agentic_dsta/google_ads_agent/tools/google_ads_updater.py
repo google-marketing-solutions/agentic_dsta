@@ -21,7 +21,9 @@ from google.adk.tools.function_tool import FunctionTool
 import google.ads.googleads.client
 from google.ads.googleads.errors import GoogleAdsException
 from google.protobuf import field_mask_pb2
-from google.ads.googleads.v22.enums.types.target_impression_share_location import TargetImpressionShareLocationEnum
+from google.ads.googleads.v22.enums.types.target_impression_share_location import (
+    TargetImpressionShareLocationEnum
+)
 from .google_ads_client import get_google_ads_client
 from .google_ads_getter import get_campaign_details
 from .bidding_strategy_utils import validate_strategy_change
@@ -30,85 +32,196 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def _apply_bidding_strategy_details(strategy_obj: Any, strategy_type: str, field_mask_paths: List[str], strategy_details: Optional[Dict[str, Any]] = None) -> bool:
-  """Helper function to apply strategy details to a campaign or bidding_strategy object."""
-  if strategy_type == "MAXIMIZE_CONVERSIONS":
-    strategy_obj.maximize_conversions  # Activate oneof
-    if strategy_details and "target_cpa_micros" in strategy_details:
-      strategy_obj.maximize_conversions.target_cpa_micros = strategy_details["target_cpa_micros"]
-    field_mask_paths.append("maximize_conversions.target_cpa_micros")
-  elif strategy_type == "MAXIMIZE_CONVERSION_VALUE":
-    strategy_obj.maximize_conversion_value  # Activate oneof
-    if strategy_details and "target_roas" in strategy_details:
-      strategy_obj.maximize_conversion_value.target_roas = strategy_details["target_roas"]
-    field_mask_paths.append("maximize_conversion_value.target_roas")
-  elif strategy_type == "TARGET_SPEND":
-    strategy_obj.target_spend  # Activate oneof
-    if strategy_details and "cpc_bid_ceiling_micros" in strategy_details:
-      strategy_obj.target_spend.cpc_bid_ceiling_micros = strategy_details["cpc_bid_ceiling_micros"]
-    field_mask_paths.append("target_spend.cpc_bid_ceiling_micros")
-  elif strategy_type == "MANUAL_CPC":
-    strategy_obj.manual_cpc  # Activate oneof
-    if strategy_details and "enhanced_cpc_enabled" in strategy_details:
-        strategy_obj.manual_cpc.enhanced_cpc_enabled = strategy_details["enhanced_cpc_enabled"]
-    field_mask_paths.append("manual_cpc.enhanced_cpc_enabled")
-  elif strategy_type == "TARGET_IMPRESSION_SHARE":
-    if not strategy_details or "location" not in strategy_details or "location_fraction_micros" not in strategy_details:
-      logger.error("Missing details for TARGET_IMPRESSION_SHARE")
-      return False
-    strategy_obj.target_impression_share  # Activate oneof
-    location_str = strategy_details["location"].upper()
-    try:
-      location_enum = TargetImpressionShareLocationEnum.TargetImpressionShareLocation[location_str]
-      strategy_obj.target_impression_share.location = location_enum
-    except KeyError:
-      logger.error(f"Invalid location for TARGET_IMPRESSION_SHARE: {location_str}")
-      return False
-    strategy_obj.target_impression_share.location_fraction_micros = strategy_details["location_fraction_micros"]
-    field_mask_paths.extend(["target_impression_share.location", "target_impression_share.location_fraction_micros"])
-    if "cpc_bid_ceiling_micros" in strategy_details:
-      strategy_obj.target_impression_share.cpc_bid_ceiling_micros = strategy_details["cpc_bid_ceiling_micros"]
-      field_mask_paths.append("target_impression_share.cpc_bid_ceiling_micros")
-  elif strategy_type == "MANUAL_CPM":
-    strategy_obj.manual_cpm
-  elif strategy_type == "MANUAL_CPV":
-    strategy_obj.manual_cpv
-  elif strategy_type == "PERCENT_CPC":
-      strategy_obj.percent_cpc
-      if strategy_details and "cpc_bid_ceiling_micros" in strategy_details:
-          strategy_obj.percent_cpc.cpc_bid_ceiling_micros = strategy_details["cpc_bid_ceiling_micros"]
-      if strategy_details and "enhanced_cpc_enabled" in strategy_details:
-          strategy_obj.percent_cpc.enhanced_cpc_enabled = strategy_details["enhanced_cpc_enabled"]
-      field_mask_paths.append("percent_cpc.cpc_bid_ceiling_micros")
-  elif strategy_type == "COMMISSION":
-      strategy_obj.commission
-      if strategy_details and "commission_rate_micros" in strategy_details:
-          strategy_obj.commission.commission_rate_micros = strategy_details["commission_rate_micros"]
-      field_mask_paths.append("commission.commission_rate_micros")
-  # Portfolio specific types for update_portfolio_bidding_strategy
-  elif strategy_type == "TARGET_CPA":
-      strategy_obj.target_cpa
-      if strategy_details and "target_cpa_micros" in strategy_details:
-          strategy_obj.target_cpa.target_cpa_micros = strategy_details["target_cpa_micros"]
-          field_mask_paths.append("target_cpa.target_cpa_micros")
-      else: 
-          logger.error("target_cpa_micros required for TARGET_CPA portfolio")
-          return False
-  elif strategy_type == "TARGET_ROAS":
-      strategy_obj.target_roas
-      if strategy_details and "target_roas" in strategy_details:
-          strategy_obj.target_roas.target_roas = strategy_details["target_roas"]
-          field_mask_paths.append("target_roas.target_roas")
-      else: 
-          logger.error("target_roas required for TARGET_ROAS portfolio")
-          return False
-  else:
-    logger.error(f"Unsupported strategy type: {strategy_type}")
-    return False
+def _apply_maximize_conversions(
+    strategy_obj: Any,
+    field_mask_paths: List[str],
+    strategy_details: Optional[Dict[str, Any]] = None
+) -> bool:
+  """Applies MAXIMIZE_CONVERSIONS strategy details."""
+  strategy_obj.maximize_conversions  # Activate oneof
+  if strategy_details and "target_cpa_micros" in strategy_details:
+    strategy_obj.maximize_conversions.target_cpa_micros = strategy_details["target_cpa_micros"]
+  field_mask_paths.append("maximize_conversions.target_cpa_micros")
   return True
 
 
-def update_bidding_strategy(customer_id: str, campaign_id: str, strategy_type: str, strategy_details: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def _apply_maximize_conversion_value(
+    strategy_obj: Any,
+    field_mask_paths: List[str],
+    strategy_details: Optional[Dict[str, Any]] = None
+) -> bool:
+  """Applies MAXIMIZE_CONVERSION_VALUE strategy details."""
+  strategy_obj.maximize_conversion_value  # Activate oneof
+  if strategy_details and "target_roas" in strategy_details:
+    strategy_obj.maximize_conversion_value.target_roas = strategy_details["target_roas"]
+  field_mask_paths.append("maximize_conversion_value.target_roas")
+  return True
+
+
+def _apply_target_spend(
+    strategy_obj: Any,
+    field_mask_paths: List[str],
+    strategy_details: Optional[Dict[str, Any]] = None
+) -> bool:
+  """Applies TARGET_SPEND strategy details."""
+  strategy_obj.target_spend  # Activate oneof
+  if strategy_details and "cpc_bid_ceiling_micros" in strategy_details:
+    strategy_obj.target_spend.cpc_bid_ceiling_micros = strategy_details["cpc_bid_ceiling_micros"]
+  field_mask_paths.append("target_spend.cpc_bid_ceiling_micros")
+  return True
+
+
+def _apply_manual_cpc(
+    strategy_obj: Any,
+    field_mask_paths: List[str],
+    strategy_details: Optional[Dict[str, Any]] = None
+) -> bool:
+  """Applies MANUAL_CPC strategy details."""
+  strategy_obj.manual_cpc  # Activate oneof
+  if strategy_details and "enhanced_cpc_enabled" in strategy_details:
+      strategy_obj.manual_cpc.enhanced_cpc_enabled = strategy_details["enhanced_cpc_enabled"]
+  field_mask_paths.append("manual_cpc.enhanced_cpc_enabled")
+  return True
+
+
+def _apply_target_impression_share(
+    strategy_obj: Any,
+    field_mask_paths: List[str],
+    strategy_details: Optional[Dict[str, Any]] = None
+) -> bool:
+  """Applies TARGET_IMPRESSION_SHARE strategy details."""
+  if (not strategy_details or
+          "location" not in strategy_details or
+          "location_fraction_micros" not in strategy_details):
+    logger.error("Missing details for TARGET_IMPRESSION_SHARE")
+    return False
+  strategy_obj.target_impression_share  # Activate oneof
+  location_str = strategy_details["location"].upper()
+  try:
+    location_enum = TargetImpressionShareLocationEnum.TargetImpressionShareLocation[location_str]
+    strategy_obj.target_impression_share.location = location_enum
+  except KeyError:
+    logger.error("Invalid location for TARGET_IMPRESSION_SHARE: %s", location_str)
+    return False
+  strategy_obj.target_impression_share.location_fraction_micros = (
+      strategy_details["location_fraction_micros"]
+  )
+  field_mask_paths.extend([
+      "target_impression_share.location",
+      "target_impression_share.location_fraction_micros"
+  ])
+  if "cpc_bid_ceiling_micros" in strategy_details:
+    strategy_obj.target_impression_share.cpc_bid_ceiling_micros = (
+        strategy_details["cpc_bid_ceiling_micros"]
+    )
+    field_mask_paths.append("target_impression_share.cpc_bid_ceiling_micros")
+  return True
+
+
+def _apply_percent_cpc(
+    strategy_obj: Any,
+    field_mask_paths: List[str],
+    strategy_details: Optional[Dict[str, Any]] = None
+) -> bool:
+  """Applies PERCENT_CPC strategy details."""
+  strategy_obj.percent_cpc
+  if strategy_details and "cpc_bid_ceiling_micros" in strategy_details:
+      strategy_obj.percent_cpc.cpc_bid_ceiling_micros = (
+          strategy_details["cpc_bid_ceiling_micros"]
+      )
+  if strategy_details and "enhanced_cpc_enabled" in strategy_details:
+      strategy_obj.percent_cpc.enhanced_cpc_enabled = strategy_details["enhanced_cpc_enabled"]
+  field_mask_paths.append("percent_cpc.cpc_bid_ceiling_micros")
+  return True
+
+
+def _apply_commission(
+    strategy_obj: Any,
+    field_mask_paths: List[str],
+    strategy_details: Optional[Dict[str, Any]] = None
+) -> bool:
+  """Applies COMMISSION strategy details."""
+  strategy_obj.commission
+  if strategy_details and "commission_rate_micros" in strategy_details:
+      strategy_obj.commission.commission_rate_micros = (
+          strategy_details["commission_rate_micros"]
+      )
+  field_mask_paths.append("commission.commission_rate_micros")
+  return True
+
+
+def _apply_target_cpa(
+    strategy_obj: Any,
+    field_mask_paths: List[str],
+    strategy_details: Optional[Dict[str, Any]] = None
+) -> bool:
+  """Applies TARGET_CPA strategy details (Portfolio)."""
+  strategy_obj.target_cpa
+  if strategy_details and "target_cpa_micros" in strategy_details:
+      strategy_obj.target_cpa.target_cpa_micros = strategy_details["target_cpa_micros"]
+      field_mask_paths.append("target_cpa.target_cpa_micros")
+      return True
+  logger.error("target_cpa_micros required for TARGET_CPA portfolio")
+  return False
+
+
+def _apply_target_roas(
+    strategy_obj: Any,
+    field_mask_paths: List[str],
+    strategy_details: Optional[Dict[str, Any]] = None
+) -> bool:
+  """Applies TARGET_ROAS strategy details (Portfolio)."""
+  strategy_obj.target_roas
+  if strategy_details and "target_roas" in strategy_details:
+      strategy_obj.target_roas.target_roas = strategy_details["target_roas"]
+      field_mask_paths.append("target_roas.target_roas")
+      return True
+  logger.error("target_roas required for TARGET_ROAS portfolio")
+  return False
+
+
+def _apply_bidding_strategy_details(
+    strategy_obj: Any,
+    strategy_type: str,
+    field_mask_paths: List[str],
+    strategy_details: Optional[Dict[str, Any]] = None
+) -> bool:
+  """Helper function to apply strategy details to a campaign or bidding_strategy object."""
+  if strategy_type == "MAXIMIZE_CONVERSIONS":
+    return _apply_maximize_conversions(strategy_obj, field_mask_paths, strategy_details)
+  elif strategy_type == "MAXIMIZE_CONVERSION_VALUE":
+    return _apply_maximize_conversion_value(strategy_obj, field_mask_paths, strategy_details)
+  elif strategy_type == "TARGET_SPEND":
+    return _apply_target_spend(strategy_obj, field_mask_paths, strategy_details)
+  elif strategy_type == "MANUAL_CPC":
+    return _apply_manual_cpc(strategy_obj, field_mask_paths, strategy_details)
+  elif strategy_type == "TARGET_IMPRESSION_SHARE":
+    return _apply_target_impression_share(strategy_obj, field_mask_paths, strategy_details)
+  elif strategy_type == "MANUAL_CPM":
+    strategy_obj.manual_cpm
+    return True
+  elif strategy_type == "MANUAL_CPV":
+    strategy_obj.manual_cpv
+    return True
+  elif strategy_type == "PERCENT_CPC":
+    return _apply_percent_cpc(strategy_obj, field_mask_paths, strategy_details)
+  elif strategy_type == "COMMISSION":
+    return _apply_commission(strategy_obj, field_mask_paths, strategy_details)
+  elif strategy_type == "TARGET_CPA":
+    return _apply_target_cpa(strategy_obj, field_mask_paths, strategy_details)
+  elif strategy_type == "TARGET_ROAS":
+    return _apply_target_roas(strategy_obj, field_mask_paths, strategy_details)
+  else:
+    logger.error("Unsupported strategy type: %s", strategy_type)
+    return False
+
+
+def update_bidding_strategy(
+    customer_id: str,
+    campaign_id: str,
+    strategy_type: str,
+    strategy_details: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
   """Updates the bidding strategy for a specific Google Ads campaign.
 
   Args:
@@ -123,7 +236,7 @@ def update_bidding_strategy(customer_id: str, campaign_id: str, strategy_type: s
   """
   client = get_google_ads_client(customer_id)
   if not client:
-    return {"error": "Failed to get Google Ads client."}
+    raise RuntimeError("Failed to get Google Ads client.")
 
   # 1. Get current campaign details
   campaign_data = get_campaign_details(customer_id, campaign_id)
@@ -132,18 +245,41 @@ def update_bidding_strategy(customer_id: str, campaign_id: str, strategy_type: s
 
   advertising_channel_type = campaign_data.get("advertisingChannelType")
   if not advertising_channel_type:
-    return {"error": "Could not determine advertising_channel_type."}
+    raise ValueError("Could not determine advertising_channel_type.")
 
   # 2. Validate the strategy change
-  logger.debug(f"Raw advertising_channel_type: '{advertising_channel_type}'", extra={'customer_id': customer_id, 'campaign_id': campaign_id})
-  logger.debug(f"Raw strategy_type: '{strategy_type}'", extra={'customer_id': customer_id, 'campaign_id': campaign_id})
-  logger.debug(f"Validating strategy change: Channel Type='{advertising_channel_type}', Target Strategy='{strategy_type}'", extra={'customer_id': customer_id, 'campaign_id': campaign_id})
+  logger.debug(
+      "Raw advertising_channel_type: '%s'",
+      advertising_channel_type,
+      extra={'customer_id': customer_id, 'campaign_id': campaign_id}
+  )
+  logger.debug(
+      "Raw strategy_type: '%s'",
+      strategy_type,
+      extra={'customer_id': customer_id, 'campaign_id': campaign_id}
+  )
+  logger.debug(
+      "Validating strategy change: Channel Type='%s', Target Strategy='%s'",
+      advertising_channel_type,
+      strategy_type,
+      extra={'customer_id': customer_id, 'campaign_id': campaign_id}
+  )
   is_valid = validate_strategy_change(advertising_channel_type, strategy_type)
-  logger.debug(f"Validation Result for ('{advertising_channel_type.upper()}', '{strategy_type.upper()}'): {is_valid}", extra={'customer_id': customer_id, 'campaign_id': campaign_id})
+  logger.debug(
+      "Validation Result for ('%s', '%s'): %s",
+      advertising_channel_type.upper(),
+      strategy_type.upper(),
+      is_valid,
+      extra={
+          'customer_id': customer_id,
+          'campaign_id': campaign_id
+      }
+  )
   if not is_valid:
-    return {
-        "error": f"Bidding strategy '{strategy_type}' is not allowed for channel type '{advertising_channel_type}'."
-    }
+    raise ValueError(
+        f"Bidding strategy '{strategy_type}' is not allowed for "
+        f"channel type '{advertising_channel_type}'."
+    )
 
   # 3. Construct the mutation
   campaign_service = client.get_service("CampaignService")
@@ -155,13 +291,22 @@ def update_bidding_strategy(customer_id: str, campaign_id: str, strategy_type: s
   if strategy_type.startswith("customers/"):
       campaign.bidding_strategy = strategy_type
       field_mask_paths.append("bidding_strategy")
-  elif not _apply_bidding_strategy_details(campaign, strategy_type, field_mask_paths, strategy_details):
-    return {"error": f"Failed to apply bidding strategy details for type: {strategy_type}"}
+  elif not _apply_bidding_strategy_details(
+      campaign,
+      strategy_type,
+      field_mask_paths,
+      strategy_details
+  ):
+    raise ValueError(f"Failed to apply bidding strategy details for type: {strategy_type}")
   else: # Standard strategy applied, ensure portfolio link is cleared
       field_mask_paths.append("bidding_strategy")
 
 
-  logger.debug(f"Field Mask Paths: {field_mask_paths}", extra={'customer_id': customer_id, 'campaign_id': campaign_id})
+  logger.debug(
+      "Field Mask Paths: %s",
+      field_mask_paths,
+      extra={'customer_id': customer_id, 'campaign_id': campaign_id}
+  )
   client.copy_from(campaign_op.update_mask, field_mask_pb2.FieldMask(paths=field_mask_paths))
 
   # 4. Execute the mutation
@@ -173,8 +318,17 @@ def update_bidding_strategy(customer_id: str, campaign_id: str, strategy_type: s
     return {"success": True, "resource_name": campaign_response.resource_name}
   except GoogleAdsException as ex:
     error_details = [str(error) for error in ex.failure.errors]
-    logger.error(f"Failed to update bidding strategy: {error_details}", exc_info=True, extra={'customer_id': customer_id, 'campaign_id': campaign_id, 'strategy_type': strategy_type})
-    return {"error": f"Failed to update bidding strategy: {ex.failure}", "details": error_details}
+    logger.error(
+        "Failed to update bidding strategy: %s",
+        error_details,
+        exc_info=True,
+        extra={
+            'customer_id': customer_id,
+            'campaign_id': campaign_id,
+            'strategy_type': strategy_type
+        }
+    )
+    raise RuntimeError(f"Failed to update bidding strategy: {ex.failure}") from ex
     
 def update_campaign_status(customer_id: str, campaign_id: str, status: str):
   """Enables or disables a Google Ads campaign.
@@ -189,7 +343,7 @@ def update_campaign_status(customer_id: str, campaign_id: str, status: str):
   """
   client = get_google_ads_client(customer_id)
   if not client:
-    return {"error": "Failed to get Google Ads client."}
+    raise RuntimeError("Failed to get Google Ads client.")
 
   campaign_service = client.get_service("CampaignService")
   campaign_op = client.get_type("CampaignOperation")
@@ -202,7 +356,7 @@ def update_campaign_status(customer_id: str, campaign_id: str, status: str):
   elif status == "PAUSED":
     campaign.status = CampaignStatusEnum.CampaignStatus.PAUSED
   else:
-    return {"error": f"Invalid status provided: {status}. Use 'ENABLED' or 'PAUSED'."}
+    raise ValueError(f"Invalid status provided: {status}. Use 'ENABLED' or 'PAUSED'.")
 
   client.copy_from(campaign_op.update_mask, field_mask_pb2.FieldMask(paths=["status"]))
   campaign_op.update_mask.paths.append("status")
@@ -214,13 +368,35 @@ def update_campaign_status(customer_id: str, campaign_id: str, status: str):
   try:
     response = campaign_service.mutate_campaigns(request=request)
     campaign_response = response.results[0]
-    logger.info(f"Updated campaign status to {status}", extra={'customer_id': customer_id, 'campaign_id': campaign_id, 'resource_name': campaign_response.resource_name})
+    logger.info(
+        "Updated campaign status to %s",
+        status,
+        extra={
+            'customer_id': customer_id,
+            'campaign_id': campaign_id,
+            'resource_name': campaign_response.resource_name
+        }
+    )
     return {"success": True, "resource_name": campaign_response.resource_name}
   except GoogleAdsException as ex:
-    logger.error(f"Failed to update campaign status", exc_info=True, extra={'customer_id': customer_id, 'campaign_id': campaign_id, 'status': status})
+    logger.error(
+        "Failed to update campaign status",
+        exc_info=True,
+        extra={'customer_id': customer_id, 'campaign_id': campaign_id, 'status': status}
+    )
     for error in ex.failure.errors:
-      logger.error(f"Google Ads API Error: {error.error_code} - {error.message}", extra={'customer_id': customer_id, 'campaign_id': campaign_id, 'error_code': error.error_code.name, 'error_message': error.message})
-    return {"error": f"Failed to update campaign: {ex.failure}"}
+      logger.error(
+          "Google Ads API Error: %s - %s",
+          error.error_code,
+          error.message,
+          extra={
+              'customer_id': customer_id,
+              'campaign_id': campaign_id,
+              'error_code': error.error_code.name,
+              'error_message': error.message
+          }
+      )
+    raise RuntimeError(f"Failed to update campaign: {ex.failure}") from ex
 
 
 def update_campaign_budget(
@@ -238,7 +414,7 @@ def update_campaign_budget(
   """
   client = get_google_ads_client(customer_id)
   if not client:
-    return {"error": "Failed to get Google Ads client."}
+    raise RuntimeError("Failed to get Google Ads client.")
 
   # First, get the campaign's budget resource name.
   ga_service = client.get_service("GoogleAdsService")
@@ -263,7 +439,7 @@ def update_campaign_budget(
       }
 
   except GoogleAdsException as ex:
-    return {"error": f"Failed to fetch campaign budget: {ex.failure}"}
+    raise RuntimeError(f"Failed to fetch campaign budget: {ex.failure}") from ex
 
   campaign_budget_service = client.get_service("CampaignBudgetService")
   campaign_budget_op = client.get_type("CampaignBudgetOperation")
@@ -279,13 +455,35 @@ def update_campaign_budget(
         customer_id=customer_id, operations=[campaign_budget_op]
     )
     budget_response = response.results[0]
-    logger.info(f"Updated campaign budget", extra={'customer_id': customer_id, 'campaign_id': campaign_id, 'resource_name': budget_response.resource_name, 'new_budget_micros': new_budget_micros})
+    logger.info(
+        "Updated campaign budget",
+        extra={
+            'customer_id': customer_id,
+            'campaign_id': campaign_id,
+            'resource_name': budget_response.resource_name,
+            'new_budget_micros': new_budget_micros
+        }
+    )
     return {"success": True, "resource_name": budget_response.resource_name}
   except GoogleAdsException as ex:
-    logger.error(f"Failed to update campaign budget", exc_info=True, extra={'customer_id': customer_id, 'campaign_id': campaign_id})
+    logger.error(
+        "Failed to update campaign budget",
+        exc_info=True,
+        extra={'customer_id': customer_id, 'campaign_id': campaign_id}
+    )
     for error in ex.failure.errors:
-      logger.error(f"Google Ads API Error: {error.error_code} - {error.message}", extra={'customer_id': customer_id, 'campaign_id': campaign_id, 'error_code': str(error.error_code), 'error_message': error.message})
-    return {"error": f"Failed to update campaign budget: {ex.failure}"}
+      logger.error(
+          "Google Ads API Error: %s - %s",
+          error.error_code,
+          error.message,
+          extra={
+              'customer_id': customer_id,
+              'campaign_id': campaign_id,
+              'error_code': str(error.error_code),
+              'error_message': error.message
+          }
+      )
+    raise RuntimeError(f"Failed to update campaign budget: {ex.failure}") from ex
 
 
 def update_campaign_geo_targets(
@@ -309,7 +507,7 @@ def update_campaign_geo_targets(
   """
   client = get_google_ads_client(customer_id)
   if not client:
-    return {"error": "Failed to get Google Ads client."}
+    raise RuntimeError("Failed to get Google Ads client.")
 
   # First, get existing geo target criteria to remove them.
   ga_service = client.get_service("GoogleAdsService")
@@ -328,7 +526,7 @@ def update_campaign_geo_targets(
         op.remove = row.campaign_criterion.resource_name
         remove_operations.append(op)
   except GoogleAdsException as ex:
-    return {"error": f"Failed to fetch existing geo targets: {ex.failure}"}
+    raise RuntimeError(f"Failed to fetch existing geo targets: {ex.failure}") from ex
 
   # Now, create new geo target criteria to add.
   campaign_criterion_service = client.get_service("CampaignCriterionService")
@@ -368,10 +566,24 @@ def update_campaign_geo_targets(
     resource_names = [r.resource_name for r in response.results]
     return {"success": True, "resource_names": resource_names}
   except GoogleAdsException as ex:
-    logger.error(f"Failed to update campaign geo targets", exc_info=True, extra={'customer_id': customer_id, 'campaign_id': campaign_id})
+    logger.error(
+        "Failed to update campaign geo targets",
+        exc_info=True,
+        extra={'customer_id': customer_id, 'campaign_id': campaign_id}
+    )
     for error in ex.failure.errors:
-      logger.error(f"Google Ads API Error: {error.error_code} - {error.message}", extra={'customer_id': customer_id, 'campaign_id': campaign_id, 'error_code': str(error.error_code), 'error_message': error.message})
-    return {"error": f"Failed to update campaign geo targets: {ex.failure}"}
+      logger.error(
+          "Google Ads API Error: %s - %s",
+          error.error_code,
+          error.message,
+          extra={
+              'customer_id': customer_id,
+              'campaign_id': campaign_id,
+              'error_code': str(error.error_code),
+              'error_message': error.message
+          }
+      )
+    raise RuntimeError(f"Failed to update campaign geo targets: {ex.failure}") from ex
 
 
 def update_ad_group_geo_targets(
@@ -395,7 +607,7 @@ def update_ad_group_geo_targets(
   """
   client = get_google_ads_client(customer_id)
   if not client:
-    return {"error": "Failed to get Google Ads client."}
+    raise RuntimeError("Failed to get Google Ads client.")
 
   # First, get existing geo target criteria to remove them.
   ga_service = client.get_service("GoogleAdsService")
@@ -414,7 +626,7 @@ def update_ad_group_geo_targets(
         op.remove = row.ad_group_criterion.resource_name
         remove_operations.append(op)
   except GoogleAdsException as ex:
-    return {"error": f"Failed to fetch existing geo targets: {ex.failure}"}
+    raise RuntimeError(f"Failed to fetch existing geo targets: {ex.failure}") from ex
 
   # Now, create new geo target criteria to add.
   ad_group_criterion_service = client.get_service("AdGroupCriterionService")
@@ -454,14 +666,32 @@ def update_ad_group_geo_targets(
     resource_names = [r.resource_name for r in response.results]
     return {"success": True, "resource_names": resource_names}
   except GoogleAdsException as ex:
-    logger.error(f"Failed to update ad group geo targets", exc_info=True, extra={'customer_id': customer_id, 'ad_group_id': ad_group_id})
+    logger.error(
+        "Failed to update ad group geo targets",
+        exc_info=True,
+        extra={'customer_id': customer_id, 'ad_group_id': ad_group_id}
+    )
     for error in ex.failure.errors:
-      logger.error(f"Google Ads API Error: {error.error_code} - {error.message}", extra={'customer_id': customer_id, 'ad_group_id': ad_group_id, 'error_code': str(error.error_code), 'error_message': error.message})
-    return {"error": f"Failed to update ad group geo targets: {ex.failure}"}
+      logger.error(
+          "Google Ads API Error: %s - %s",
+          error.error_code,
+          error.message,
+          extra={
+              'customer_id': customer_id,
+              'ad_group_id': ad_group_id,
+              'error_code': str(error.error_code),
+              'error_message': error.message
+          }
+      )
+    raise RuntimeError(f"Failed to update ad group geo targets: {ex.failure}") from ex
 
 
 
-def update_shared_budget(customer_id: str, budget_resource_name: str, new_amount_micros: int) -> Dict[str, Any]:
+def update_shared_budget(
+    customer_id: str,
+    budget_resource_name: str,
+    new_amount_micros: int
+) -> Dict[str, Any]:
   """Updates the amount for a shared budget.
 
   Args:
@@ -474,10 +704,10 @@ def update_shared_budget(customer_id: str, budget_resource_name: str, new_amount
   """
   client = get_google_ads_client(customer_id)
   if not client:
-    return {"error": "Failed to get Google Ads client."}
+    raise RuntimeError("Failed to get Google Ads client.")
 
   if not budget_resource_name.startswith(f"customers/{customer_id}/campaignBudgets/"):
-    return {"error": f"Invalid budget_resource_name format for customer {customer_id}."}
+    raise ValueError(f"Invalid budget_resource_name format for customer {customer_id}.")
 
   campaign_budget_service = client.get_service("CampaignBudgetService")
   campaign_budget_op = client.get_type("CampaignBudgetOperation")
@@ -493,17 +723,42 @@ def update_shared_budget(customer_id: str, budget_resource_name: str, new_amount
         customer_id=customer_id, operations=[campaign_budget_op]
     )
     budget_response = response.results[0]
-    logger.info(f"Updated shared budget amount", extra={'customer_id': customer_id, 'resource_name': budget_response.resource_name, 'new_amount_micros': new_amount_micros})
+    logger.info(
+        "Updated shared budget amount",
+        extra={
+            'customer_id': customer_id,
+            'resource_name': budget_response.resource_name,
+            'new_amount_micros': new_amount_micros
+        }
+    )
     return {"success": True, "resource_name": budget_response.resource_name}
   except GoogleAdsException as ex:
-    logger.error(f"Failed to update shared budget", exc_info=True, extra={'customer_id': customer_id, 'budget_resource_name': budget_resource_name})
+    logger.error(
+        "Failed to update shared budget",
+        exc_info=True,
+        extra={'customer_id': customer_id, 'budget_resource_name': budget_resource_name}
+    )
     for error in ex.failure.errors:
-      logger.error(f"Google Ads API Error: {error.error_code} - {error.message}", extra={'customer_id': customer_id, 'error_code': str(error.error_code), 'error_message': error.message})
-    return {"error": f"Failed to update shared budget: {ex.failure}"}
+      logger.error(
+          "Google Ads API Error: %s - %s",
+          error.error_code,
+          error.message,
+          extra={
+              'customer_id': customer_id,
+              'error_code': str(error.error_code),
+              'error_message': error.message
+          }
+      )
+    raise RuntimeError(f"Failed to update shared budget: {ex.failure}") from ex
 
 
 
-def update_portfolio_bidding_strategy(customer_id: str, bidding_strategy_resource_name: str, strategy_type: str, strategy_details: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+def update_portfolio_bidding_strategy(
+    customer_id: str,
+    bidding_strategy_resource_name: str,
+    strategy_type: str,
+    strategy_details: Optional[Dict[str, Any]] = None
+) -> Dict[str, Any]:
   """Updates the type and details of a portfolio bidding strategy.
 
   Args:
@@ -517,10 +772,10 @@ def update_portfolio_bidding_strategy(customer_id: str, bidding_strategy_resourc
   """
   client = get_google_ads_client(customer_id)
   if not client:
-    return {"error": "Failed to get Google Ads client."}
+    raise RuntimeError("Failed to get Google Ads client.")
 
   if not bidding_strategy_resource_name.startswith(f"customers/{customer_id}/biddingStrategies/"):
-    return {"error": f"Invalid bidding_strategy_resource_name format for customer {customer_id}."}
+    raise ValueError(f"Invalid bidding_strategy_resource_name format for customer {customer_id}.")
 
   bidding_strategy_service = client.get_service("BiddingStrategyService")
   bs_op = client.get_type("BiddingStrategyOperation")
@@ -528,8 +783,10 @@ def update_portfolio_bidding_strategy(customer_id: str, bidding_strategy_resourc
   bidding_strategy.resource_name = bidding_strategy_resource_name
 
   field_mask_paths = []
-  if not _apply_bidding_strategy_details(bidding_strategy, strategy_type, field_mask_paths, strategy_details):
-    return {"error": f"Failed to apply bidding strategy details for type: {strategy_type}"}  
+  if not _apply_bidding_strategy_details(
+      bidding_strategy, strategy_type, field_mask_paths, strategy_details
+  ):
+    raise ValueError(f"Failed to apply bidding strategy details for type: {strategy_type}")  
 
 
   # Remove duplicates
@@ -541,12 +798,25 @@ def update_portfolio_bidding_strategy(customer_id: str, bidding_strategy_resourc
     response = bidding_strategy_service.mutate_bidding_strategies(
         customer_id=customer_id, operations=[bs_op]
     )
-    logger.info(f"Updated portfolio bidding strategy {bidding_strategy_resource_name} to {strategy_type}", extra={'customer_id': customer_id, 'resource_name': response.results[0].resource_name})
+    logger.info(
+        "Updated portfolio bidding strategy %s to %s",
+        bidding_strategy_resource_name,
+        strategy_type,
+        extra={'customer_id': customer_id, 'resource_name': response.results[0].resource_name}
+    )
     return {"success": True, "resource_name": response.results[0].resource_name}
   except GoogleAdsException as ex:
     error_details = [str(error) for error in ex.failure.errors]
-    logger.error(f"Failed to update portfolio bidding strategy: {error_details}", exc_info=True, extra={'customer_id': customer_id, 'bidding_strategy_resource_name': bidding_strategy_resource_name})
-    return {"error": f"Failed to update portfolio bidding strategy: {ex.failure}", "details": error_details}
+    logger.error(
+        "Failed to update portfolio bidding strategy: %s",
+        error_details,
+        exc_info=True,
+        extra={
+            'customer_id': customer_id,
+            'bidding_strategy_resource_name': bidding_strategy_resource_name
+        }
+    )
+    raise RuntimeError(f"Failed to update portfolio bidding strategy: {ex.failure}") from ex
 
 
 class GoogleAdsUpdaterToolset(BaseToolset):
@@ -570,7 +840,9 @@ class GoogleAdsUpdaterToolset(BaseToolset):
         func=update_bidding_strategy,
     )
     self._update_shared_budget_tool = FunctionTool(func=update_shared_budget)
-    self._update_portfolio_bidding_strategy_tool = FunctionTool(func=update_portfolio_bidding_strategy)
+    self._update_portfolio_bidding_strategy_tool = FunctionTool(
+        func=update_portfolio_bidding_strategy
+    )
 
   async def get_tools(
       self, readonly_context: Optional[Any] = None

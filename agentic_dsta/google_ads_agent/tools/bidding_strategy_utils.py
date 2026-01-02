@@ -53,11 +53,21 @@ ALLOWED_STRATEGIES = {
 }
 
 PROHIBITED_STRATEGIES = {
-    "PERFORMANCE_MAX": ["MANUAL_CPC", "TARGET_IMPRESSION_SHARE", "TARGET_SPEND", "MANUAL_CPM", "MANUAL_CPV", "PERCENT_CPC", "COMMISSION"],
+    "PERFORMANCE_MAX": [
+        "MANUAL_CPC", "TARGET_IMPRESSION_SHARE", "TARGET_SPEND", "MANUAL_CPM",
+        "MANUAL_CPV", "PERCENT_CPC", "COMMISSION"
+    ],
     "SEARCH": ["MANUAL_CPM", "COMMISSION", "MANUAL_CPV", "PERCENT_CPC"],
     "DISPLAY": ["TARGET_IMPRESSION_SHARE", "COMMISSION", "MANUAL_CPV", "PERCENT_CPC"],
-    "VIDEO": ["MANUAL_CPC", "TARGET_IMPRESSION_SHARE", "MAXIMIZE_CONVERSION_VALUE", "TARGET_ROAS", "TARGET_SPEND", "PERCENT_CPC", "COMMISSION"],
-    "HOTEL": ["TARGET_IMPRESSION_SHARE", "MANUAL_CPM", "TARGET_CPM", "MAXIMIZE_CONVERSIONS", "MAXIMIZE_CONVERSION_VALUE", "TARGET_CPA", "TARGET_ROAS", "TARGET_SPEND", "MANUAL_CPV"],
+    "VIDEO": [
+        "MANUAL_CPC", "TARGET_IMPRESSION_SHARE", "MAXIMIZE_CONVERSION_VALUE",
+        "TARGET_ROAS", "TARGET_SPEND", "PERCENT_CPC", "COMMISSION"
+    ],
+    "HOTEL": [
+        "TARGET_IMPRESSION_SHARE", "MANUAL_CPM", "TARGET_CPM",
+        "MAXIMIZE_CONVERSIONS", "MAXIMIZE_CONVERSION_VALUE",
+        "TARGET_CPA", "TARGET_ROAS", "TARGET_SPEND", "MANUAL_CPV"
+    ],
 }
 
 def validate_strategy_change(channel_type: str, target_strategy: str) -> bool:
@@ -65,11 +75,16 @@ def validate_strategy_change(channel_type: str, target_strategy: str) -> bool:
     channel_type = channel_type.upper()
     target_strategy = target_strategy.upper()
     if channel_type not in ALLOWED_STRATEGIES:
-        logger.warning(f"Unknown channel type '{channel_type}'", extra={'channel_type': channel_type})
+        logger.warning(
+            "Unknown channel type '%s'",
+            channel_type,
+            extra={'channel_type': channel_type}
+        )
         return False # Fail safe
     if target_strategy not in ALLOWED_STRATEGIES[channel_type]:
         return False
-    if channel_type in PROHIBITED_STRATEGIES and target_strategy in PROHIBITED_STRATEGIES[channel_type]:
+    if (channel_type in PROHIBITED_STRATEGIES and
+            target_strategy in PROHIBITED_STRATEGIES[channel_type]):
         # This case should ideally be caught by the ALLOWED_STRATEGIES check,
         # but this adds an extra layer of safety based on the markdown's prohibited list.
         return False

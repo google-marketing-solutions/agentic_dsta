@@ -19,7 +19,16 @@ class JsonFormatter(logging.Formatter):
             log_record['exception'] = self.formatException(record.exc_info)
 
         # Add extra fields
-        extra_fields = {k: v for k, v in record.__dict__.items() if k not in log_record and k not in ['args', 'asctime', 'created', 'exc_info', 'exc_text', 'filename', 'levelname', 'levelno', 'lineno', 'module', 'msecs', 'msg', 'name', 'pathname', 'process', 'processName', 'relativeCreated', 'stack_info', 'thread', 'threadName']}
+        excluded_keys = [
+            'args', 'asctime', 'created', 'exc_info', 'exc_text', 'filename',
+            'levelname', 'levelno', 'lineno', 'module', 'msecs', 'msg', 'name',
+            'pathname', 'process', 'processName', 'relativeCreated',
+            'stack_info', 'thread', 'threadName'
+        ]
+        extra_fields = {
+            k: v for k, v in record.__dict__.items()
+            if k not in log_record and k not in excluded_keys
+        }
         log_record.update(extra_fields)
 
         return json.dumps(log_record)

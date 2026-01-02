@@ -40,7 +40,7 @@ def get_campaign_details(customer_id: str, campaign_id: str) -> Dict[str, Any]:
 
   client = get_google_ads_client(customer_id)
   if not client:
-    return {"error": "Failed to get Google Ads client."}
+    raise RuntimeError("Failed to get Google Ads client.")
 
   ga_service = client.get_service("GoogleAdsService")
 
@@ -100,14 +100,28 @@ def get_campaign_details(customer_id: str, campaign_id: str) -> Dict[str, Any]:
       for row in batch.results:
         campaign = row.campaign
         return MessageToDict(campaign._pb)
-      return {"error": f"Campaign with ID '{campaign_id}' not found."}
+      raise ValueError(f"Campaign with ID '{campaign_id}' not found.")
 
   except GoogleAdsException as ex:
-    logger.error(f"Failed to fetch campaign details", exc_info=True, extra={'customer_id': customer_id, 'campaign_id': campaign_id})
+    logger.error(
+        "Failed to fetch campaign details",
+        exc_info=True,
+        extra={'customer_id': customer_id, 'campaign_id': campaign_id}
+    )
     for error in ex.failure.errors:
-      logger.error(f"Google Ads API Error: {error.error_code} - {error.message}", extra={'customer_id': customer_id, 'campaign_id': campaign_id, 'error_code': str(error.error_code), 'error_message': error.message})
+      logger.error(
+          "Google Ads API Error: %s - %s",
+          error.error_code,
+          error.message,
+          extra={
+              'customer_id': customer_id,
+              'campaign_id': campaign_id,
+              'error_code': str(error.error_code),
+              'error_message': error.message
+          }
+      )
 
-    return {"error": f"Failed to fetch campaign details: {ex.failure}"}
+    raise RuntimeError(f"Failed to fetch campaign details: {ex.failure}") from ex
 
 
 def search_geo_target_constants(
@@ -125,7 +139,7 @@ def search_geo_target_constants(
   """
   client = get_google_ads_client(customer_id)
   if not client:
-    return {"error": "Failed to get Google Ads client."}
+    raise RuntimeError("Failed to get Google Ads client.")
 
   gtc_service = client.get_service("GeoTargetConstantService")
   request = client.get_type("SuggestGeoTargetConstantsRequest")
@@ -140,10 +154,24 @@ def search_geo_target_constants(
       )
     return {"suggestions": suggestions}
   except GoogleAdsException as ex:
-    logger.error(f"Failed to search for geo target constants", exc_info=True, extra={'customer_id': customer_id, 'location_name': location_name})
+    logger.error(
+        "Failed to search for geo target constants",
+        exc_info=True,
+        extra={'customer_id': customer_id, 'location_name': location_name}
+    )
     for error in ex.failure.errors:
-      logger.error(f"Google Ads API Error: {error.error_code} - {error.message}", extra={'customer_id': customer_id, 'location_name': location_name, 'error_code': str(error.error_code), 'error_message': error.message})
-    return {"error": f"Failed to search for geo target constants: {ex.failure}"}
+      logger.error(
+          "Google Ads API Error: %s - %s",
+          error.error_code,
+          error.message,
+          extra={
+              'customer_id': customer_id,
+              'location_name': location_name,
+              'error_code': str(error.error_code),
+              'error_message': error.message
+          }
+      )
+    raise RuntimeError(f"Failed to search for geo target constants: {ex.failure}") from ex
 
 
 def get_geo_targets(customer_id: str, campaign_id: str) -> Dict[str, Any]:
@@ -159,7 +187,7 @@ def get_geo_targets(customer_id: str, campaign_id: str) -> Dict[str, Any]:
   """
   client = get_google_ads_client(customer_id)
   if not client:
-    return {"error": "Failed to get Google Ads client."}
+    raise RuntimeError("Failed to get Google Ads client.")
 
   ga_service = client.get_service("GoogleAdsService")
 
@@ -182,7 +210,7 @@ def get_geo_targets(customer_id: str, campaign_id: str) -> Dict[str, Any]:
       for row in batch.results:
         campaign_targets.append(MessageToDict(row.campaign_criterion._pb))
   except GoogleAdsException as ex:
-    return {"error": f"Failed to fetch campaign geo targets: {ex.failure}"}
+    raise RuntimeError(f"Failed to fetch campaign geo targets: {ex.failure}") from ex
 
   # Get ad group-level geo targets
   ad_group_query = f"""
@@ -209,7 +237,7 @@ def get_geo_targets(customer_id: str, campaign_id: str) -> Dict[str, Any]:
             MessageToDict(row.ad_group_criterion._pb)
         )
   except GoogleAdsException as ex:
-    return {"error": f"Failed to fetch ad group geo targets: {ex.failure}"}
+    raise RuntimeError(f"Failed to fetch ad group geo targets: {ex.failure}") from ex
 
   return {
       "campaign_targets": campaign_targets,
@@ -228,7 +256,7 @@ def list_shared_budgets(customer_id: str) -> Dict[str, Any]:
   """
   client = get_google_ads_client(customer_id)
   if not client:
-    return {"error": "Failed to get Google Ads client."}
+    raise RuntimeError("Failed to get Google Ads client.")
 
   ga_service = client.get_service("GoogleAdsService")
   query = """
@@ -253,14 +281,30 @@ def list_shared_budgets(customer_id: str) -> Dict[str, Any]:
         budgets.append(MessageToDict(row.campaign_budget._pb))
     return {"shared_budgets": budgets}
   except GoogleAdsException as ex:
-    logger.error(f"Failed to fetch shared budgets", exc_info=True, extra={'customer_id': customer_id})
+    logger.error(
+        "Failed to fetch shared budgets",
+        exc_info=True,
+        extra={'customer_id': customer_id}
+    )
     for error in ex.failure.errors:
-      logger.error(f"Google Ads API Error: {error.error_code} - {error.message}", extra={'customer_id': customer_id, 'error_code': str(error.error_code), 'error_message': error.message})
-    return {"error": f"Failed to fetch shared budgets: {ex.failure}"}
+      logger.error(
+          "Google Ads API Error: %s - %s",
+          error.error_code,
+          error.message,
+          extra={
+              'customer_id': customer_id,
+              'error_code': str(error.error_code),
+              'error_message': error.message
+          }
+      )
+    raise RuntimeError(f"Failed to fetch shared budgets: {ex.failure}") from ex
 
 
 
-def get_campaigns_by_bidding_strategy(customer_id: str, bidding_strategy_resource_name: str) -> Dict[str, Any]:
+def get_campaigns_by_bidding_strategy(
+    customer_id: str,
+    bidding_strategy_resource_name: str
+) -> Dict[str, Any]:
   """Fetches campaigns attached to a specific portfolio bidding strategy.
 
   Args:
@@ -272,7 +316,7 @@ def get_campaigns_by_bidding_strategy(customer_id: str, bidding_strategy_resourc
   """
   client = get_google_ads_client(customer_id)
   if not client:
-    return {"error": "Failed to get Google Ads client."}
+    raise RuntimeError("Failed to get Google Ads client.")
 
   ga_service = client.get_service("GoogleAdsService")
   query = f"""
@@ -293,10 +337,26 @@ def get_campaigns_by_bidding_strategy(customer_id: str, bidding_strategy_resourc
         campaigns.append(MessageToDict(row.campaign._pb))
     return {"campaigns": campaigns}
   except GoogleAdsException as ex:
-    logger.error(f"Failed to fetch campaigns by bidding strategy", exc_info=True, extra={'customer_id': customer_id, 'bidding_strategy': bidding_strategy_resource_name})
+    logger.error(
+        "Failed to fetch campaigns by bidding strategy",
+        exc_info=True,
+        extra={
+            'customer_id': customer_id,
+            'bidding_strategy': bidding_strategy_resource_name
+        }
+    )
     for error in ex.failure.errors:
-      logger.error(f"Google Ads API Error: {error.error_code} - {error.message}", extra={'customer_id': customer_id, 'error_code': str(error.error_code), 'error_message': error.message})
-    return {"error": f"Failed to fetch campaigns by bidding strategy: {ex.failure}"}
+      logger.error(
+          "Google Ads API Error: %s - %s",
+          error.error_code,
+          error.message,
+          extra={
+              'customer_id': customer_id,
+              'error_code': str(error.error_code),
+              'error_message': error.message
+          }
+      )
+    raise RuntimeError(f"Failed to fetch campaigns by bidding strategy: {ex.failure}") from ex
 
 
 
@@ -311,7 +371,7 @@ def list_portfolio_bidding_strategies(customer_id: str) -> Dict[str, Any]:
   """
   client = get_google_ads_client(customer_id)
   if not client:
-    return {"error": "Failed to get Google Ads client."}
+    raise RuntimeError("Failed to get Google Ads client.")
 
   ga_service = client.get_service("GoogleAdsService")
   query = """
@@ -332,10 +392,23 @@ def list_portfolio_bidding_strategies(customer_id: str) -> Dict[str, Any]:
         strategies.append(MessageToDict(row.bidding_strategy._pb))
     return {"bidding_strategies": strategies}
   except GoogleAdsException as ex:
-    logger.error(f"Failed to fetch portfolio bidding strategies", exc_info=True, extra={'customer_id': customer_id})
+    logger.error(
+        "Failed to fetch portfolio bidding strategies",
+        exc_info=True,
+        extra={'customer_id': customer_id}
+    )
     for error in ex.failure.errors:
-      logger.error(f"Google Ads API Error: {error.error_code} - {error.message}", extra={'customer_id': customer_id, 'error_code': str(error.error_code), 'error_message': error.message})
-    return {"error": f"Failed to fetch portfolio bidding strategies: {ex.failure}"}
+      logger.error(
+          "Google Ads API Error: %s - %s",
+          error.error_code,
+          error.message,
+          extra={
+              'customer_id': customer_id,
+              'error_code': str(error.error_code),
+              'error_message': error.message
+          }
+      )
+    raise RuntimeError(f"Failed to fetch portfolio bidding strategies: {ex.failure}") from ex
 
 
 

@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 def get_google_ads_client(customer_id: str):
-  logger.debug(f"get_google_ads_client called", extra={'customer_id': customer_id})
+  logger.debug("get_google_ads_client called", extra={'customer_id': customer_id})
   """Initializes and returns a GoogleAdsClient."""
   try:
     try:
@@ -55,9 +55,22 @@ def get_google_ads_client(customer_id: str):
           config_data
       )
   except GoogleAdsException as ex:
-    logger.error(f"Failed to create GoogleAdsClient", exc_info=True, extra={'customer_id': customer_id})
+    logger.error(
+        "Failed to create GoogleAdsClient",
+        exc_info=True,
+        extra={'customer_id': customer_id}
+    )
     for error in ex.failure.errors:
-      logger.error(f"Google Ads API Error: {error.error_code} - {error.message}", extra={'customer_id': customer_id, 'error_code': str(error.error_code), 'error_message': error.message})
+      logger.error(
+          "Google Ads API Error: %s - %s",
+          error.error_code,
+          error.message,
+          extra={
+              'customer_id': customer_id,
+              'error_code': str(error.error_code),
+              'error_message': error.message
+          }
+      )
     return None
 
 if __name__ == '__main__':

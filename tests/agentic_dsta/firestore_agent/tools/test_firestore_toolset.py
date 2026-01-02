@@ -5,7 +5,7 @@ import os
 
 from agentic_dsta.firestore_agent.tools.firestore_toolset import FirestoreToolset
 
-class TestFirestoreToolset(unittest.TestCase):
+class TestFirestoreToolset(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self):
         self.mock_environ = patch.dict(os.environ, {

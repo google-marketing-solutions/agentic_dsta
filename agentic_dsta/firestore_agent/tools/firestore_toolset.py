@@ -45,7 +45,11 @@ class FirestoreToolset(BaseToolset):
         self._project_id = project_id or os.environ.get("GOOGLE_CLOUD_PROJECT")
         self._database_id = database_id or os.environ.get("FIRESTORE_DB")
         self._client = None
-        logger.info(f"FirestoreToolset initialized with project_id: {self._project_id}, database_id: {self._database_id}")
+        logger.info(
+            "FirestoreToolset initialized with project_id: %s, database_id: %s",
+            self._project_id,
+            self._database_id
+        )
 
     def _get_client(self) -> firestore.Client:
         """Get or create Firestore client."""
@@ -57,7 +61,7 @@ class FirestoreToolset(BaseToolset):
                     database=self._database_id
                 )
             except Exception as e:
-                logger.error(f"Failed to create Firestore client: {e}", exc_info=True)
+                logger.error("Failed to create Firestore client: %s", e, exc_info=True)
                 raise
         return self._client
 
@@ -87,27 +91,33 @@ class FirestoreToolset(BaseToolset):
             Document data as dictionary
         """
         client = self._get_client()
-        logger.info(f"Getting document: {collection}/{document_id}")
+        logger.info("Getting document: %s/%s", collection, document_id)
         try:
             doc_ref = client.collection(collection).document(document_id)
             doc = doc_ref.get()
 
             if doc.exists:
-                logger.info(f"Document found: {collection}/{document_id}")
+                logger.info("Document found: %s/%s", collection, document_id)
                 return {
                     "id": doc.id,
                     "data": doc.to_dict(),
                     "exists": True
                 }
             else:
-                logger.info(f"Document not found: {collection}/{document_id}")
+                logger.info("Document not found: %s/%s", collection, document_id)
                 return {
                     "id": document_id,
                     "exists": False,
                     "message": "Document not found"
                 }
         except Exception as e:
-            logger.error(f"Error getting document {collection}/{document_id}: {e}", exc_info=True)
+            logger.error(
+                "Error getting document %s/%s: %s",
+                collection,
+                document_id,
+                e,
+                exc_info=True
+            )
             return {"id": document_id, "exists": False, "error": str(e)}
 
     def query_collection(
@@ -124,7 +134,8 @@ class FirestoreToolset(BaseToolset):
         Args:
             collection: Collection path
             field: Field name to filter on (optional)
-            operator: Comparison operator: "==", "!=", "<", "<=", ">", ">=", "in", "not-in", "array-contains" (optional)
+            operator: Comparison operator: "==", "!=", "<", "<=", ">", ">=",
+                "in", "not-in", "array-contains" (optional)
             value: Value to compare against (optional)
             limit: Maximum number of documents to return (default: 100)
 
@@ -136,7 +147,14 @@ class FirestoreToolset(BaseToolset):
             query_collection("users", "age", ">", 18, limit=50)  # Get users over 18
             query_collection("products", "category", "==", "electronics")  # Get electronics
         """
-        logger.info(f"Querying collection: {collection} with filter: {field} {operator} {value}, limit: {limit}")
+        logger.info(
+            "Querying collection: %s with filter: %s %s %s, limit: %s",
+            collection,
+            field,
+            operator,
+            value,
+            limit
+        )
         client = self._get_client()
         try:
             query = client.collection(collection)
@@ -164,7 +182,7 @@ class FirestoreToolset(BaseToolset):
                 "documents": results
             }
         except Exception as e:
-            logger.error(f"Error querying collection {collection}: {e}", exc_info=True)
+            logger.error("Error querying collection %s: %s", collection, e, exc_info=True)
             return {"collection": collection, "count": 0, "documents": [], "error": str(e)}
 
     def set_document(
@@ -186,7 +204,7 @@ class FirestoreToolset(BaseToolset):
         Returns:
             Confirmation of the operation
         """
-        logger.info(f"Setting document: {collection}/{document_id}, merge: {merge}")
+        logger.info("Setting document: %s/%s, merge: %s", collection, document_id, merge)
         client = self._get_client()
         try:
             doc_ref = client.collection(collection).document(document_id)
@@ -198,7 +216,7 @@ class FirestoreToolset(BaseToolset):
                 doc_ref.set(data)
                 operation = "set"
 
-            logger.info(f"Successfully {operation} document: {collection}/{document_id}")
+            logger.info("Successfully %s document: %s/%s", operation, collection, document_id)
             return {
                 "success": True,
                 "operation": operation,
@@ -206,8 +224,19 @@ class FirestoreToolset(BaseToolset):
                 "document_id": document_id
             }
         except Exception as e:
-            logger.error(f"Error setting document {collection}/{document_id}: {e}", exc_info=True)
-            return {"success": False, "error": str(e), "collection": collection, "document_id": document_id}
+            logger.error(
+                "Error setting document %s/%s: %s",
+                collection,
+                document_id,
+                e,
+                exc_info=True
+            )
+            return {
+                "success": False,
+                "error": str(e),
+                "collection": collection,
+                "document_id": document_id
+            }
 
     def delete_document(
         self,
@@ -224,7 +253,7 @@ class FirestoreToolset(BaseToolset):
         Returns:
             Confirmation of the deletion
         """
-        logger.info(f"Deleting document: {collection}/{document_id}")
+        logger.info("Deleting document: %s/%s", collection, document_id)
         client = self._get_client()
         try:
             doc_ref = client.collection(collection).document(document_id)
@@ -237,8 +266,19 @@ class FirestoreToolset(BaseToolset):
                 "document_id": document_id
             }
         except Exception as e:
-            logger.error(f"Error deleting document {collection}/{document_id}: {e}", exc_info=True)
-            return {"success": False, "error": str(e), "collection": collection, "document_id": document_id}
+            logger.error(
+                "Error deleting document %s/%s: %s",
+                collection,
+                document_id,
+                e,
+                exc_info=True
+            )
+            return {
+                "success": False,
+                "error": str(e),
+                "collection": collection,
+                "document_id": document_id
+            }
 
     def list_collections(self) -> Dict[str, Any]:
         """
@@ -259,5 +299,5 @@ class FirestoreToolset(BaseToolset):
                 "collections": collection_names
             }
         except Exception as e:
-            logger.error(f"Error listing collections: {e}", exc_info=True)
+            logger.error("Error listing collections: %s", e, exc_info=True)
             return {"count": 0, "collections": [], "error": str(e)}

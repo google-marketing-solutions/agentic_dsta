@@ -52,5 +52,5 @@ def get_sheets_service():
     )
     return None
   except HttpError as err:
-    logging.exception(f"Failed to create Google Sheets service: {err}")
+    logging.exception("Failed to create Google Sheets service: %s", err)
     return None
