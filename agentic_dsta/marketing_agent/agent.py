@@ -23,6 +23,7 @@ from google_ads_agent.tools.google_ads_getter import GoogleAdsGetterToolset
 from google_ads_agent.tools.google_ads_updater import GoogleAdsUpdaterToolset
 from api_hub_agent.tools.apihub_toolset import DynamicMultiAPIToolset
 from firestore_agent.tools.firestore_toolset import FirestoreToolset
+from sa360_agent.tools.sa360_toolset import SA360Toolset
 from google.adk import agents
 
 
@@ -44,5 +45,6 @@ root_agent = agents.LlmAgent(
         GoogleAdsUpdaterToolset(),
         DynamicMultiAPIToolset(),
         FirestoreToolset(),
+        SA360Toolset(),
     ],
 )

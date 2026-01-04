@@ -25,6 +25,7 @@ from firestore_agent.tools.firestore_toolset import FirestoreToolset
 from google.adk import agents
 from google_ads_agent.tools.google_ads_getter import GoogleAdsGetterToolset
 from google_ads_agent.tools.google_ads_updater import GoogleAdsUpdaterToolset
+from sa360_agent.tools.sa360_toolset import SA360Toolset
 
 from .strategies import fetch_instructions_from_firestore
 
@@ -36,6 +37,7 @@ tools = [
     GoogleAdsUpdaterToolset(),
     DynamicMultiAPIToolset(),
     FirestoreToolset(),
+    SA360Toolset(),
 ]
 
 root_agent = agents.LlmAgent(
@@ -44,6 +46,8 @@ root_agent = agents.LlmAgent(
       You are a Marketing Campaign Manager.
       Your task is to follow the user's request and the customer-specific instructions that will be provided to you.
       Use the available tools to execute the instructions and then provide a summary of the actions you have taken.
+      Provide sheet id and sheet name to firestore toolset for sa360 campaigns and pass them to sa360 toolset.
+      Collection id = SA360Config and document id is same as customer id for sa360 campaigns.
       """,
     model=model,
     tools=tools,
