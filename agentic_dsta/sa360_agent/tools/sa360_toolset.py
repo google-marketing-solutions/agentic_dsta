@@ -104,7 +104,7 @@ def _update_campaign_property(
   except (HttpError, IndexError) as err:
     logging.exception(err)
     raise RuntimeError(f"Failed to update campaign property: {err}") from err
-  
+
 
 def update_campaign_status(
     campaign_id: str, status: str, sheet_id: str, sheet_name: str
@@ -127,12 +127,92 @@ def update_campaign_status(
 
 
 def update_campaign_geolocation(
-    campaign_id: str, location_name: str, sheet_id: str, sheet_name: str
+    campaign_id: str,
+    location_name: str,
+    sheet_id: str,
+    sheet_name: str,
+    remove: bool = False,
 ) -> Dict[str, Any]:
-  """Updates the geo-targeting for an SA360 campaign in the Google Sheet."""
-  return _update_campaign_property(
-      campaign_id, "Location", location_name, sheet_id, sheet_name
-  )
+  """Updates or removes the geo-targeting for an SA360 campaign in the Google Sheet.
+
+  If 'remove' is True, a new record is created in the sheet to remove the
+  geo-location. If 'remove' is False, the existing campaign's location is updated.
+
+  Args:
+      campaign_id: The ID of the campaign to modify.
+      location_name: The name of the location to update or remove.
+      sheet_id: The ID of the Google Sheet.
+      sheet_name: The name of the sheet.
+      remove: If True, the location will be removed. Defaults to False.
+
+  Returns:
+      A dictionary containing a success or error message.
+  """
+  if remove:
+    details = get_campaign_details(campaign_id, sheet_id, sheet_name)
+    if "error" in details:
+      return details
+
+    service = get_sheets_service()
+    if not service:
+      raise RuntimeError("Failed to get Google Sheets service.")
+
+    try:
+      sheet = service.spreadsheets()
+      # Get header row to determine column order
+      header_result = (
+          sheet.values()
+          .get(spreadsheetId=sheet_id, range=f"{sheet_name}!1:1")
+          .execute()
+      )
+      header = header_result.get("values", [[]])[0]
+      if not header:
+        raise ValueError("Could not read header row from the sheet.")
+
+      # Check for required columns for this operation
+      if "Associated Campaign ID" not in header:
+        raise ValueError("Sheet must contain 'Associated Campaign ID' column.")
+      if "Action" not in header:
+        raise ValueError("Sheet must contain 'Action' column.")
+      if "Row Type" not in header:
+        raise ValueError("Sheet must contain 'Row Type' column.")
+
+      # Prepare the new row
+      new_row_dict = {
+          "Row Type": "excluded location",
+          "Action": "deactivate",
+          "Customer ID": details.get("Customer ID"),
+          "Campaign": details.get("Campaign"),
+          "Location": location_name,
+          "EU political ads": details.get("EU political ads"),
+          "Associated Campaign ID": campaign_id,
+      }
+
+      # Convert dict to list in the correct order for insertion
+      new_row_values = [new_row_dict.get(h, "") for h in header]
+
+      # Append the new row to the sheet
+      sheet.values().append(
+          spreadsheetId=sheet_id,
+          range=sheet_name,
+          valueInputOption="RAW",
+          body={"values": [new_row_values]},
+      ).execute()
+
+      return {
+          "success": (
+              f"Geolocation removal record for '{location_name}' added for campaign"
+              f" '{campaign_id}'."
+          )
+      }
+
+    except (HttpError, ValueError, IndexError) as err:
+      logging.exception(err)
+      raise RuntimeError(f"Failed to remove campaign geolocation: {err}") from err
+  else:
+    return _update_campaign_property(
+        campaign_id, "Location", location_name, sheet_id, sheet_name
+    )
 
 
 def update_campaign_budget(
@@ -140,86 +220,6 @@ def update_campaign_budget(
 ) -> Dict[str, Any]:
   """Updates the budget for an SA360 campaign in the Google Sheet."""
   return _update_campaign_property(campaign_id, "Budget", budget, sheet_id, sheet_name)
-
-
-def remove_campaign_geolocation(
-    campaign_id: str, location_name: str, sheet_id: str, sheet_name: str
-) -> Dict[str, Any]:
-  """Creates a new record in the sheet to remove a geo-location for a campaign.
-
-  This function works by creating a new row in the sheet that acts as a
-  negative targeting record. It calls get_campaign_details to get the campaign's
-  current settings, then adds a new row to the sheet for the location to be
-  removed. It assumes the sheet has columns 'Associated Campaign ID' and
-  'Action'.
-
-  Args:
-      campaign_id: The ID of the campaign to modify.
-      location_name: The name of the location to remove.
-
-  Returns:
-      A dictionary containing a success or error message.
-  """
-  details = get_campaign_details(campaign_id, sheet_id, sheet_name)
-  if "error" in details:
-    return details
-
-  service = get_sheets_service()
-  if not service:
-    raise RuntimeError("Failed to get Google Sheets service.")
-
-  try:
-    sheet = service.spreadsheets()
-    # Get header row to determine column order
-    header_result = (
-        sheet.values()
-        .get(spreadsheetId=sheet_id, range=f"{sheet_name}!1:1")
-        .execute()
-    )
-    header = header_result.get("values", [[]])[0]
-    if not header:
-      raise ValueError("Could not read header row from the sheet.")
-
-    # Check for required columns for this operation
-    if "Associated Campaign ID" not in header:
-      raise ValueError(f"Sheet must contain 'Associated Campaign ID' column.")
-    if "Action" not in header:
-      raise ValueError(f"Sheet must contain 'Action' column.")
-    if "Row Type" not in header:
-      raise ValueError(f"Sheet must contain 'Row Type' column.")
-
-    # Prepare the new row
-    new_row_dict = {
-        "Row Type": "excluded location",
-        "Action": "deactivate",
-        "Customer ID": details.get("Customer ID"),
-        "Campaign": details.get("Campaign"),
-        "Location": location_name,
-        "EU political ads": details.get("EU political ads"),
-        "Associated Campaign ID": campaign_id,
-    }
-
-    # Convert dict to list in the correct order for insertion
-    new_row_values = [new_row_dict.get(h, "") for h in header]
-
-    # Append the new row to the sheet
-    sheet.values().append(
-        spreadsheetId=sheet_id,
-        range=sheet_name,
-        valueInputOption="RAW",
-        body={"values": [new_row_values]},
-    ).execute()
-
-    return {
-        "success": (
-            f"Geolocation removal record for '{location_name}' added for campaign"
-            f" '{campaign_id}'."
-        )
-    }
-
-  except (HttpError, ValueError, IndexError) as err:
-    logging.exception(err)
-    raise RuntimeError(f"Failed to remove campaign geolocation: {err}") from err
 
 
 class SA360Toolset(BaseToolset):
@@ -240,9 +240,7 @@ class SA360Toolset(BaseToolset):
         func=update_campaign_budget
     )
     self._update_campaign_bids_tool = FunctionTool(func=update_campaign_bids)
-    self._remove_campaign_geolocation_tool = FunctionTool(
-        func=remove_campaign_geolocation
-    )
+
 
   async def get_tools(
       self, readonly_context: Optional[Any] = None
@@ -254,5 +252,4 @@ class SA360Toolset(BaseToolset):
         self._update_campaign_geolocation_tool,
         self._update_campaign_budget_tool,
         self._update_campaign_bids_tool,
-        self._remove_campaign_geolocation_tool,
     ]
