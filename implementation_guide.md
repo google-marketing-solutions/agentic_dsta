@@ -10,11 +10,11 @@ This guide provides all the necessary information for deploying, configuring, an
 
 ## 2. Solution Overview
 
-The core of this solution is a multi-agent framework built with the Application Development Kit (ADK). This framework includes several specialized agents that work together to make intelligent marketing decisions:
+The core of this solution is a multi-agent framework built with the Application Development Kit (ADK). This framework includes several specialized toolsets that are used by the agents to make intelligent marketing decisions:
 
-*   **API Hub Agent:** This agent can dynamically discover and call any API registered in your Google Cloud API Hub instance. Its tools allow it to fetch data from external sources, which it then passes to other agents for decision-making.
-*   **Firestore Agent:** This agent acts as the memory and configuration hub. It has tools to read, write, query, and delete documents in Firestore. It is used to store and retrieve business rules, campaign instructions, and location data.
-*   **Google Ads Agent:** A specialized agent with a comprehensive toolset to directly manage your Google Ads campaigns. Its capabilities include:
+*   **API Hub Toolset:** This toolset can dynamically discover and call any API registered in your Google Cloud API Hub instance. Its tools allow agents to fetch data from external sources, which is then used for decision-making.
+*   **Firestore Toolset:** This toolset acts as the memory and configuration hub. It has tools to read, write, query, and delete documents in Firestore. It is used to store and retrieve business rules, campaign instructions, and location data.
+*   **Google Ads Toolset:** A specialized toolset to directly manage your Google Ads campaigns. Its capabilities include:
     *   **Fetching Campaign Details:** Retrieve a full overview of a campaign's settings and current status.
     *   **Updating Campaign Status:** Programmatically pause or enable campaigns.
     *   **Modifying Campaign Budgets:** Adjust the budget for any campaign.
@@ -38,9 +38,9 @@ The core of this solution is a multi-agent framework built with the Application 
     *   **Searching for Geo-Targets:** Look up geo-target constants by location name (e.g., "New York City") to find the correct IDs for targeting.
     *   **Listing Shared Budgets:** Retrieve a list of all explicitly shared budgets in the account that are currently enabled.
     *   **Updating Shared Budgets:** Modify the amount of an existing explicitly shared budget using its resource name.
-*   **SA360 Agent:** This agent is designed for Search Ads 360 management. It uses a Google Sheet as an intermediary for bulk updates. Its tools can modify this sheet to change campaign statuses, which are then uploaded by the user to SA360.
-*   **Decision Agent:** This is the orchestrator agent responsible for automated execution. It takes a high-level goal (e.g., from the Cloud Scheduler job), uses the other agents to gather data, and then delegates campaign management tasks based on the retrieved information and business rules.
-*   **Marketing Agent:** This is the same orchestrator agent as the Decision Agent, but it is intended for interactive use through the ADK web UI. It allows a user to interact with all the available tools at once to perform complex tasks and act on campaigns in a conversational manner.
+*   **SA360 Toolset:** This toolset is designed for Search Ads 360 management. It uses a Google Sheet as an intermediary for bulk updates. Its tools can modify this sheet to change campaign statuses, which are then uploaded by the user to SA360.
+*   **Decision Agent:** This is the orchestrator agent responsible for automated execution. It takes a high-level goal (e.g., from the Cloud Scheduler job), uses the toolsets to gather data, and then delegates campaign management tasks based on the retrieved information and business rules.
+*   **Marketing Agent:** This is the interactive agent that is used to perform complex tasks and act on campaigns in a conversational manner. It is intended for interactive use through the ADK web UI.
 
 The entire solution is deployed as a containerized application on Google Cloud Run and is managed through Infrastructure as Code (IaC) with Terraform.
 
@@ -49,11 +49,11 @@ The entire solution is deployed as a containerized application on Google Cloud R
 The following diagram illustrates the architecture of the Agentic Dynamic Signal Target Ads solution:
 
 ```
-[User/Scheduler] -> [Cloud Run (FastAPI)] -> [Marketing Agent]
+[User/Scheduler] -> [Cloud Run (FastAPI)] -> [Marketing Agent / Decision Agent]
                                                        |
             +---------------------+--------------------+---------------------+
             |                     |                    |                     |
-    [Google Ads Agent]     [SA360 Agent]       [Firestore Agent]       [API Hub Agent]
+    [Google Ads Toolset]    [SA360 Toolset]    [Firestore Toolset]    [API Hub Toolset]
             |                     |                    |                     |
       [Google Ads API]      [Google Sheet]     [Firestore DB]      [External APIs]
                                   | (manual upload)                        (e.g., Weather, Pollen)
@@ -63,8 +63,9 @@ The following diagram illustrates the architecture of the Agentic Dynamic Signal
 
 **Workflow Details:**
 
-*   **Google Ads:** The `Google Ads Agent` interacts directly with the Google Ads API to manage campaigns.
-*   **SA360:** The `SA360 Agent` updates a Google Sheet with campaign status changes. The user is responsible for uploading this sheet to SA360.
+*   **Google Ads:** The `Google Ads Toolset` allows the agent to interact directly with the Google Ads API to manage campaigns.
+*   **SA360:** The `SA360 Toolset` allows the agent to update a Google Sheet with campaign changes. The user is responsible for uploading this sheet to SA360.
+
 
 ## 4. Key Components
 
@@ -148,7 +149,13 @@ Follow the official Google Ads API documentation to obtain your developer token,
 1.  **Developer Token:**
     *   Apply for a developer token through your Google Ads manager account. Follow the instructions at [Get a Developer Token](https://developers.google.com/google-ads/api/docs/first-call/dev-token).
 
-2.  **OAuth2 Client ID and Client Secret:**
+2.  **Google API Key (for Weather/Pollen APIs):**
+    *   This solution uses public Google APIs (Weather, Pollen) which require a standard Google API Key.
+    *   Go to the [Credentials page](https://console.cloud.google.com/apis/credentials) in your Google Cloud Console.
+    *   Click **Create Credentials** > **API key**.
+    *   Copy the key and save it. You will need to provide this as a secret named `GOOGLE_API_KEY` during deployment.
+
+3.  **OAuth2 Client ID and Client Secret:**
     *   Configure an OAuth2 consent screen and create credentials for a **Desktop app**. This will provide you with a client ID and client secret. Follow the guide at [Create a Client ID and Client Secret](https://developers.google.com/google-ads/api/docs/oauth/cloud-project#create_a_client_id_and_client_secret).
     *   **Important:** On your OAuth consent screen configuration, you must add the Google Ads API scope: `https://www.googleapis.com/auth/adwords`.
     *   When creating your OAuth2 Client ID, make sure to add `http://127.0.0.1:8080` to the list of **Authorized redirect URIs**. The `generate_user_credentials.py` script uses this URI to capture the authorization response. Failure to add this will result in a `redirect_uri_mismatch` error.
@@ -173,6 +180,14 @@ Follow the official Google Ads API documentation to obtain your developer token,
     *   After granting permissions, you'll be redirected to a page on `127.0.0.1:8080` (or an error page if the redirect URI wasn't set up correctly). The script will capture the authorization code from the redirect.
     *   **Result:** The script will then exchange the authorization code for a refresh token and an access token, and print the refresh token to the console. It might also save the credentials to a `google-ads.yaml` file in your home directory.
     *   **Copy the Refresh Token:** Securely copy the displayed refresh token. You will need this for your `config.yaml`.
+
+6.  **Review Collected Credentials:**
+    *   Ensure you have the following list ready:
+        *   Google Ads Developer Token
+        *   OAuth2 Client ID
+        *   OAuth2 Client Secret
+        *   OAuth2 Refresh Token
+        *   Google API Key
 
 Once you have collected all these credentials, have them ready. You will be prompted to enter them securely during the first run of the deployment script. You do **not** need to put them in any file.
 
@@ -204,14 +219,20 @@ cd gta-solutions/infra
 
 All deployment parameters are managed in the `config.yaml` file.
 
-1.  **Create the configuration file:**
-    Copy the provided example file:
+    Use the provided example file as a template:
     ```bash
-    cp config.yaml.example config.yaml
+    cp config/app/config.yaml.example config/app/config.yaml
     ```
 
 2.  **Edit the configuration:**
-    Open `config.yaml` and fill in the non-sensitive values for your environment, such as your `project_id`. You do **not** need to add any secret credentials to this file. A detailed explanation of each parameter is provided in the **Configuration Parameters** section below.
+    Open `config/app/config.yaml`.
+    *   Fill in the non-sensitive values like `project_id`.
+    *   **Advanced Secrets:** If you need to inject the `GOOGLE_API_KEY`, uncomment the `additional_secrets` section:
+        ```yaml
+        additional_secrets:
+          - "GOOGLE_API_KEY"
+        ```
+    *   Do **not** put the actual secret values in this file. You will be prompted for them during deployment.
 
 ### Step 3: Run the Deployment Script
 
@@ -246,7 +267,9 @@ The following table describes each parameter in the `config.yaml` file:
 | `allow_unauthenticated`        | If `true`, the Cloud Run service will be publicly accessible. Set to `false` for production.           | `false`                                       |
 | `firestore_database_name`      | The name for your Firestore database instance.                                                          | `"dsta-agentic-firestore-tf"`                 |
 | `firestore_location_id`        | The location for your Firestore database (e.g., `nam5` for North America).                              | `"nam5"`                                      |
+| `firestore_location_id`        | The location for your Firestore database (e.g., `nam5` for North America).                              | `"nam5"`                                      |
 | `firestore_database_type`      | The type of Firestore database to create (`FIRESTORE_NATIVE` or `DATASTORE_MODE`).                        | `"FIRESTORE_NATIVE"`                          |
+| `additional_secrets`           | List of extra secrets to manage (e.g., `GOOGLE_API_KEY`).                                               | `["GOOGLE_API_KEY"]`                          |
 | `artifact_repository_id`       | The name for your Artifact Registry repository.                                                         | `"agentic-dsta-repo"`                         |
 | `apihub_instance_id`           | The ID for your API Hub instance.                                                                       | `"default-instance"`                          |
 | `scheduler_cron`               | The cron schedule for triggering the marketing automation agent.                                        | `"0 0 * * *"`                                 |
@@ -379,7 +402,7 @@ Each log entry is a JSON object with the following keys:
 -   `timestamp`: ISO 8601 format UTC timestamp.
 -   `severity`: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
 -   `message`: The log message.
--   `logger_name`: Name of the logger instance (e.g., `agentic_dsta.google_ads_agent.tools.google_ads_getter`).
+-   `logger_name`: Name of the logger instance (e.g., `agentic_dsta.tools.google_ads.google_ads_getter`).
 -   `code_function`: Function name where the log was emitted.
 -   `code_line`: Line number where the log was emitted.
 -   `exception`: Stack trace if an exception occurred.
@@ -430,10 +453,10 @@ The core of the solution is the automated execution of the **Decision Agent**, w
 A Google Cloud Scheduler job is deployed by Terraform to trigger this agent at a regular frequency (defined by the `scheduler_cron` parameter in your `config.yaml`). On each run, the scheduler sends a request to the agent with a preset instruction, such as: *"Run daily check based on current demand signals and business rules."*
 
 The Decision Agent then follows its instructions to:
-1.  Fetch real-time data using the **API Hub Agent**.
-2.  Retrieve business rules from the **Firestore Agent**.
-3.  Make a decision on which campaigns to activate or pause.
-4.  Delegate the execution of these changes to the **Google Ads Agent** or **SA360 Agent**.
+1.  Fetch real-time data using the **API Hub Toolset**.
+2.  Retrieve business rules from the **Firestore Toolset**.
+3.  Make a decision on what changes to make to the campaigns.
+4.  Delegate the execution of these changes to the **Google Ads Toolset** or **SA360 Toolset**.
 
 This automated workflow allows the solution to manage your campaigns hands-free based on the rules and data sources you have configured.
 
