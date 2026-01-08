@@ -1,27 +1,9 @@
-
 import functools
-import os
+import logging
 
 import google.auth
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-import yaml
-import logging
-
-
-def load_config():
-  """Load agent configuration from YAML file."""
-  #config_path = os.path.join(os.path.dirname(__file__), "config.yaml")
-  # Get the directory of the current file (utils.py)
-  current_dir = os.path.dirname(__file__)
-
-  # Go up one level and join with config.yaml
-  config_path = os.path.abspath(os.path.join(current_dir, '..', 'config.yaml'))
-
-
-  with open(config_path, "r", encoding='utf-8') as f:
-    config = yaml.safe_load(f)
-  return config["model"], config["instruction"]
 
 
 @functools.lru_cache()

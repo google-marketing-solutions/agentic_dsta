@@ -2,11 +2,14 @@
 
 import logging
 from typing import Any, Dict, List, Optional
+
+from agentic_dsta.tools.sa360.sa360_utils import get_sheets_service
 from google.adk.tools.base_toolset import BaseToolset
 from google.adk.tools.function_tool import FunctionTool
 from googleapiclient.errors import HttpError
 
-from agentic_dsta.tools.sa360.sa360_utils import get_sheets_service
+
+logger = logging.getLogger(__name__)
 
 
 def get_campaign_details(campaign_id: str, sheet_id: str, sheet_name: str) -> Dict[str, Any]:
@@ -37,12 +40,13 @@ def get_campaign_details(campaign_id: str, sheet_id: str, sheet_name: str) -> Di
 
     for row in values[1:]:
       if len(row) > campaign_id_index and row[campaign_id_index] == campaign_id:
+        logger.info(f"Campaign details: {row[campaign_id_index]}")
         return dict(zip(header, row))
 
     raise ValueError(f"Campaign with ID '{campaign_id}' not found.")
 
   except (HttpError, IndexError) as err:
-    logging.exception(err)
+    logger.error(err)
     raise RuntimeError(f"Failed to fetch campaign details: {err}") from err
 
 
@@ -71,7 +75,7 @@ def _update_campaign_property(
       campaign_id_index = header.index("Campaign ID")
       property_index = header.index(property_name)
     except ValueError as err:
-      logging.exception(err)
+      logger.error(err)
       raise ValueError(f"Column not found in sheet: {err}") from err
 
     row_to_update = -1
@@ -93,7 +97,7 @@ def _update_campaign_property(
         valueInputOption="RAW",
         body=body,
     ).execute()
-
+    logger.info(f"Campaign property updated: {property_name} to {property_value}")
     return {
         "success": (
             f"Campaign '{campaign_id}' {property_name} updated to"
@@ -102,7 +106,7 @@ def _update_campaign_property(
     }
 
   except (HttpError, IndexError) as err:
-    logging.exception(err)
+    logger.error(err)
     raise RuntimeError(f"Failed to update campaign property: {err}") from err
 
 
@@ -198,7 +202,7 @@ def update_campaign_geolocation(
           valueInputOption="RAW",
           body={"values": [new_row_values]},
       ).execute()
-
+      logger.info(f"Geolocation removal record added for {location_name} for campaign {campaign_id}")
       return {
           "success": (
               f"Geolocation removal record for '{location_name}' added for campaign"
@@ -207,7 +211,7 @@ def update_campaign_geolocation(
       }
 
     except (HttpError, ValueError, IndexError) as err:
-      logging.exception(err)
+      logger.error(err)
       raise RuntimeError(f"Failed to remove campaign geolocation: {err}") from err
   else:
     return _update_campaign_property(
@@ -239,7 +243,6 @@ class SA360Toolset(BaseToolset):
     self._update_campaign_budget_tool = FunctionTool(
         func=update_campaign_budget
     )
-
 
   async def get_tools(
       self, readonly_context: Optional[Any] = None

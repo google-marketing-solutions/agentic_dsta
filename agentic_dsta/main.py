@@ -84,6 +84,8 @@ async def scheduler_init_and_run(request: Request):
 
     # Parse the customer_id from payload
     customer_id = payload.get("customer_id") or payload.get("user_id")
+    # Fetch the usecase from payload i.e. either google ads or sa360
+    usecase = payload.get("usecase")
 
     if not customer_id:
         raise HTTPException(
@@ -97,7 +99,7 @@ async def scheduler_init_and_run(request: Request):
 
     try:
         # Run asynchronous controller
-        await run_decision_agent(customer_id)
+        await run_decision_agent(customer_id, usecase)
         return {"status": "success", "message": f"Decision agent run completed for {customer_id}"}
     except Exception as e:
         logger.error("Error running decision agent: %s", e)
