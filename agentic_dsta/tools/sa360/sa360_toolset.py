@@ -3,16 +3,71 @@
 import logging
 from typing import Any, Dict, List, Optional
 
-from agentic_dsta.tools.sa360.sa360_utils import get_sheets_service
+from agentic_dsta.tools.sa360.sa360_utils import get_sheets_service, get_reporting_api_client
 from google.adk.tools.base_toolset import BaseToolset
 from google.adk.tools.function_tool import FunctionTool
 from googleapiclient.errors import HttpError
 
-
 logger = logging.getLogger(__name__)
 
 
-def get_sa360_campaign_details(campaign_id: str, sheet_id: str, sheet_name: str) -> Dict[str, Any]:
+def get_sa360_campaign_details(campaign_id: str, customer_id: str) -> Dict[str, Any]:
+  """Fetches details for a specific SA360 campaign.
+
+  Args:
+      campaign_id: The ID of the campaign to fetch.
+      customer_id: The ID of the customer.
+
+  Returns:
+      A dictionary containing the campaign details.
+
+  Raises:
+    ValueError: If the campaign with the given ID is not found or if the
+      customer_id is not a valid 10-digit value.
+    RuntimeError: If an API error occurs.
+  """
+  if not customer_id.isdigit() or len(customer_id) != 10:
+    raise ValueError("customer_id must be a 10-digit value.")
+  service = get_reporting_api_client()
+  if not service:
+    raise RuntimeError("Failed to get SA360 Reporting API client.")
+
+  search_query = f"""
+      SELECT
+      campaign.id,
+      campaign.name,
+      campaign.status,
+      campaign.serving_status,
+      campaign.ad_serving_optimization_status,
+      campaign.advertising_channel_type,
+      campaign.advertising_channel_sub_type,
+      campaign.engine_id,
+      campaign.start_date,
+      campaign.end_date,
+      campaign.bidding_strategy_type,
+      campaign.tracking_url_template,
+      campaign.final_url_suffix
+      FROM campaign
+      WHERE campaign.id = {campaign_id}
+    """
+
+  try:
+    request = service.customers().searchAds360().search(
+        customerId=customer_id,
+        body={'query': search_query}
+    )
+
+    response = request.execute()
+
+    if "results" in response and response["results"]:
+      return response["results"][0].get("campaign", {})
+    raise ValueError(f"Campaign with ID '{campaign_id}' not found.")
+  except HttpError as err:
+    logging.exception(err)
+    raise RuntimeError(f"Failed to fetch campaign details: {err}") from err
+
+
+def get_sa360_campaign_details_sheet(campaign_id: str, sheet_id: str, sheet_name: str) -> Dict[str, Any]:
   """Fetches details for a specific SA360 campaign from the Google Sheet.
 
   Args:
@@ -135,6 +190,7 @@ def update_sa360_campaign_geolocation(
     location_name: str,
     sheet_id: str,
     sheet_name: str,
+    customer_id: str,
     remove: bool = False,
 ) -> Dict[str, Any]:
   """Updates or removes the geo-targeting for an SA360 campaign in the Google Sheet.
@@ -147,13 +203,14 @@ def update_sa360_campaign_geolocation(
       location_name: The name of the location to update or remove.
       sheet_id: The ID of the Google Sheet.
       sheet_name: The name of the sheet.
+      customer_id: The ID of the customer.
       remove: If True, the location will be removed. Defaults to False.
 
   Returns:
       A dictionary containing a success or error message.
   """
   if remove:
-    details = get_sa360_campaign_details(campaign_id, sheet_id, sheet_name)
+    details = get_sa360_campaign_details(campaign_id, customer_id)
     if "error" in details:
       return details
 
@@ -231,9 +288,11 @@ class SA360Toolset(BaseToolset):
 
   def __init__(self):
     super().__init__()
-    # Get sheet id and name here
-    # get_firestore_data()
-    self._get_campaign_details_tool = FunctionTool(
+
+    self._get_campaign_details_sa360_sheet_tool = FunctionTool(
+        func=get_sa360_campaign_details_sheet,
+    )
+    self._get_campaign_details_sa360_tool = FunctionTool(
         func=get_sa360_campaign_details,
     )
     self._update_campaign_status_tool = FunctionTool(func=update_sa360_campaign_status)
@@ -249,7 +308,8 @@ class SA360Toolset(BaseToolset):
   ) -> List[FunctionTool]:
     """Returns a list of tools in this toolset."""
     return [
-        self._get_campaign_details_tool,
+        self._get_campaign_details_sa360_sheet_tool,
+        self._get_campaign_details_sa360_tool,
         self._update_campaign_status_tool,
         self._update_campaign_geolocation_tool,
         self._update_campaign_budget_tool,

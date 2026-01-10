@@ -39,6 +39,12 @@ The core of this solution is a multi-agent framework built with the Application 
     *   **Listing Shared Budgets:** Retrieve a list of all explicitly shared budgets in the account that are currently enabled.
     *   **Updating Shared Budgets:** Modify the amount of an existing explicitly shared budget using its resource name.
 *   **SA360 Toolset:** This toolset is designed for Search Ads 360 management. It uses a Google Sheet as an intermediary for bulk updates. Its tools can modify this sheet to change campaign statuses, which are then uploaded by the user to SA360.
+    *   **Fetching Campaign Details:** Retrieve a full overview of a campaign's settings and current status from SA360.
+    *   **Updating Campaign Status:** Programmatically pause or enable campaigns in Google Sheet.
+    *   **Modifying Campaign Budgets:** Adjust the budget for any campaign in Google Sheet.
+    *   **Updating Geo-Targeting:** Add a geolocation to the list of locations of the campaign in Google Sheet.
+    *   **Negative Geo-Targeting:** Remove a geolocation from the list of locations of the campaign in Google Sheet.
+    *   **Fetching Campaign Details - Google Sheet:** Retrieve a full overview of a campaign's settings and current status from user managed Google Sheet.
 *   **Decision Agent:** This is the orchestrator agent responsible for automated execution. It takes a high-level goal (e.g., from the Cloud Scheduler job), uses the toolsets to gather data, and then delegates campaign management tasks based on the retrieved information and business rules.
 *   **Marketing Agent:** This is the interactive agent that is used to perform complex tasks and act on campaigns in a conversational manner. It is intended for interactive use through the ADK web UI.
 
@@ -64,7 +70,7 @@ The following diagram illustrates the architecture of the Agentic Dynamic Signal
 **Workflow Details:**
 
 *   **Google Ads:** The `Google Ads Toolset` allows the agent to interact directly with the Google Ads API to manage campaigns.
-*   **SA360:** The `SA360 Toolset` allows the agent to update a Google Sheet with campaign changes. The user is responsible for uploading this sheet to SA360.
+*   **SA360:** The `SA360 Toolset` allows the agent to interact with SA360 Reporting API to get campaign details & update a Google Sheet with campaign changes. The user is responsible for uploading this sheet to SA360.
 
 
 ## 4. Key Components
@@ -278,7 +284,7 @@ The following table describes each parameter in the `config.yaml` file:
 
 ### 9.1. Firestore Data Model
 
-The solution uses Google Cloud Firestore to store business rules and campaign configurations. The primary collection is `GoogleAdsConfig`.
+The solution uses Google Cloud Firestore to store business rules and campaign configurations. The primary collections are `GoogleAdsConfig` and `SA360Config`.
 
 **Collection: `GoogleAdsConfig`**
 
@@ -291,6 +297,19 @@ Each document in this collection represents a Google Ads customer account. The d
     *   **`campaignId`** (Number): The ID of the Google Ads campaign.
     *   **`instruction`** (String): The natural language instruction for the agent to follow (e.g., "If the pollen count is high, pause the campaign.").
 *   **`locations`** (Array): An array of location objects used for targeting. Each object contains details like city, state, latitude, and longitude.
+
+**Collection: `SA360Config`**
+
+Each document in this collection represents a SA360 customer account. The document ID should be the `customer_id`.
+
+**Document Schema:**
+
+*   **`customerId`** (Number): The SA360 customer ID.
+*   **`SheetId`** (String): The Google Sheet ID.
+*   **`SheetName`** (String): The Google Sheet name.
+*   **`campaigns`** (Map): A map of campaign configurations, where each key is a `campaignId`.
+    *   **`campaignId`** (Number): The ID of the Google Ads campaign.
+    *   **`instruction`** (String): The natural language instruction for the agent to follow (e.g., "If the pollen count is high, pause the campaign.").
 
 ### 9.2. API Specifications
 
@@ -325,8 +344,25 @@ For managing Search Ads 360 campaigns, this solution uses a Google Sheet-based b
 **Workflow Overview:**
 
 1.  **User Creates a Google Sheet:** You, the user, will create and maintain a Google Sheet that lists all the SA360 campaigns to be managed by the Agentic DSTA solution.
-2.  **Agent Updates the Sheet:** When the Marketing Agent decides to change the status of a campaign (e.g., pause it due to low demand), it will update the `Status` column in your Google Sheet for the corresponding campaign.
-3.  **User Schedules Upload:** You are responsible for taking the updated sheet and uploading it into the Search Ads 360 UI at a regular interval. This can be done manually or by setting up a scheduled upload within the SA360 platform.
+2.  **Google Sheet template:** The Google Sheet used for bulk upload should contain a set of columns and can be downloaded from SA360 web console by folllowing these steps:
+    *   Login to your SA360 account
+    *   Navigate to Bulk Actions
+    *   Inside Bulk Actions, go to Uploads
+    *   Click on + icon (Upload file button)
+    *   Click on Download button (right next to Download template (Optional) text)
+3.  **Additional Column:** Add an additional column named `Associated Campaign ID` to the Google sheet for Negative targeting (removing) of locations.
+4.  **Update Firestore config:** Add `SheetId` and `SheetName` to the firestore collection `SA360Config` for the Google Sheet with customer id as the document id.
+5.  **Agent Updates the Sheet:** When the Marketing Agent decides to change the status, budget, geo-targeting of a campaign (e.g., pause it due to low demand), it will update the `Status`, `Budget`, `Location` columns respectively in your Google Sheet for the corresponding campaign.
+6.  **Agent Inserts in Sheet:** For Negative geo-targeting, agent will insert a new record in the Sheet with: 
+    *   `Row Type`: excluded location name,
+    *   `Action`: "deactivate",
+    *   `Customer ID`: Customer ID,
+    *   `Campaign`: Name of Campaign,
+    *   `Location`: location to be removed,
+    *   `EU political ads`: EU political ads flag (True/False),
+    *   `Associated Campaign ID`: Campaign ID,
+    The user should remove all negative geo-targeting records manually from the sheet to maintain clarity in campaign data.
+7.  **User Schedules Upload:** You are responsible for taking the updated sheet and uploading it into the Search Ads 360 UI at a regular interval. This can be done manually or by setting up a scheduled upload within the SA360 platform (Bulk Actions > Uploads > Schedules).
 
 **Sheet Format:**
 
@@ -337,7 +373,7 @@ The Google Sheet must contain at least the following columns:
 | `Campaign`  | The exact name of the SA360 campaign.           | `"Summer Sale"` |
 | `Status`    | The status of the campaign (`Active` or `Paused`). | `"Active"`      |
 
-The agent will find the campaign by its name and update the `Status` column to either `Active` or `Paused` based on its decision logic.
+The agent will find the campaign by its ID and update the `Status`, `Budget`, and `Location` columns based on its decision logic and campaign instruction.
 
 ## 10. Extending the Solution with More APIs
 

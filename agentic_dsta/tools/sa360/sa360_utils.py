@@ -36,3 +36,32 @@ def get_sheets_service():
   except HttpError as err:
     logging.exception("Failed to create Google Sheets service: %s", err)
     return None
+
+
+@functools.lru_cache()
+def get_reporting_api_client():
+  """Initializes and returns a SA360 Reporting API service."""
+  try:
+    # Authentication is handled by the environment using Application Default
+    # Credentials (ADC). When running locally, you can authenticate by running:
+    # gcloud auth application-default login
+    credentials, _ = google.auth.default(
+        scopes=["https://www.googleapis.com/auth/doubleclicksearch"]
+    )
+
+    service = build(
+        serviceName="searchads360",
+        version="v0",
+        credentials=credentials,
+        static_discovery=False,
+    )
+    return service
+  except google.auth.exceptions.DefaultCredentialsError:
+    logging.exception(
+        "Could not find default credentials. Please run "
+        "'gcloud auth application-default login' if you are running locally."
+    )
+    return None
+  except HttpError as err:
+    logging.exception("Failed to create SA360 Reporting service: %s", err)
+    return None
