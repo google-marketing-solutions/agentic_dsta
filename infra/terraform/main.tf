@@ -23,6 +23,7 @@ locals {
   artifact_repository_id             = "${var.resource_prefix}-repo"
 
   sa_combined_scheduler_job_name     = "${var.resource_prefix}-sa-combined-job"
+  google_ads_combined_scheduler_job_name = "${var.resource_prefix}-ga-combined-job"
 }
 
 # Service Account for Cloud Run
@@ -112,7 +113,7 @@ resource "google_cloud_scheduler_job" "sa_combined_job" {
   project          = var.project_id
   region           = var.region
   name             = local.sa_combined_scheduler_job_name
-  description      = "Combined job to init session and run agent"
+  description      = "Combined job to init session and run agent for SA360"
   schedule         = var.sa_run_sse_scheduler_job_schedule
   time_zone        = var.sa_run_sse_scheduler_job_timezone
   attempt_deadline = var.sa_run_sse_scheduler_job_attempt_deadline
@@ -132,6 +133,7 @@ resource "google_cloud_scheduler_job" "sa_combined_job" {
       app_name = "decision_agent"
       user_id  = google_service_account.run_sa.email
       customer_id = var.customer_id
+      usecase = "SA360"
     }))
     headers = {
       "Content-Type" = "application/json"
@@ -146,6 +148,44 @@ resource "google_cloud_scheduler_job" "sa_combined_job" {
 }
 
 
+# Combined Scheduler Job for Decision Agent
+resource "google_cloud_scheduler_job" "google_ads_combined_job" {
+  project          = var.project_id
+  region           = var.region
+  name             = local.google_ads_combined_scheduler_job_name
+  description      = "Combined job to init session and run agent for Google Ads"
+  schedule         = var.sa_run_sse_scheduler_job_schedule
+  time_zone        = var.sa_run_sse_scheduler_job_timezone
+  attempt_deadline = var.sa_run_sse_scheduler_job_attempt_deadline
+
+  retry_config {
+    retry_count          = 0
+    max_retry_duration   = "0s"
+    min_backoff_duration = "5s"
+    max_backoff_duration = "3600s"
+    max_doublings        = 5
+  }
+
+  http_target {
+    http_method = "POST"
+    uri         = "${module.cloud_run_service.service_url}/scheduler/init_and_run"
+    body = base64encode(jsonencode({
+      app_name = "decision_agent"
+      user_id  = google_service_account.run_sa.email
+      customer_id = var.customer_id
+      usecase = "GoogleAds"
+    }))
+    headers = {
+      "Content-Type" = "application/json"
+      "User-Agent"   = "Google-Cloud-Scheduler"
+    }
+
+    oidc_token {
+      service_account_email = google_service_account.run_sa.email
+      audience              = "${module.cloud_run_service.service_url}/scheduler/init_and_run"
+    }
+  }
+}
 
 # --- Scheduler Verification Outputs ---
 output "scheduler_target_uri" {

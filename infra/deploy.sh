@@ -233,7 +233,7 @@ fi
 # 8. Append the dynamic image_url to terraform.tfvars
 echo "--- Appending image_url to terraform.tfvars ---"
 # Remove any existing image_url line to avoid duplicates
-sed -i '/^image_url/d' "$TFVARS_FILE"
+sed '/^image_url/d' "$TFVARS_FILE" > "$TFVARS_FILE.tmp" && mv "$TFVARS_FILE.tmp" "$TFVARS_FILE"
 echo "image_url = \"$IMAGE_URL\"" >> "$TFVARS_FILE"
 
 # 9. Enable Cloud Resource Manager APIgcloud auth print-access-token --impersonate-service-account="$SA_EMAIL"
