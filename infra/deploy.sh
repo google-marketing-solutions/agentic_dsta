@@ -236,9 +236,7 @@ echo "--- Appending image_url to terraform.tfvars ---"
 sed '/^image_url/d' "$TFVARS_FILE" > "$TFVARS_FILE.tmp" && mv "$TFVARS_FILE.tmp" "$TFVARS_FILE"
 echo "image_url = \"$IMAGE_URL\"" >> "$TFVARS_FILE"
 
-# 9. Enable Cloud Resource Manager APIgcloud auth print-access-token --impersonate-service-account="$SA_EMAIL"
-# This API is a prerequisite for Terraform to be able to read or enable other APIs.
-# We enable it here directly to prevent race conditions during Terraform's plan phase.
+# 9. Enable Cloud Resource Manager API
 echo "--- Enabling prerequisite Cloud Resource Manager API ---"
 gcloud services enable cloudresourcemanager.googleapis.com --project="$PROJECT_ID"
 echo "   Waiting for 30 seconds for API enablement to propagate..."
@@ -257,34 +255,6 @@ terraform -chdir=terraform init -upgrade -reconfigure \
   -backend-config="bucket=$TF_STATE_BUCKET" \
   -backend-config="access_token=$ACCESS_TOKEN"
 
-# 11. Import existing resources to prevent "Already Exists" errors
-echo "--- Importing existing resources into Terraform state ---"
-
-# Firestore Database
-terraform -chdir=terraform import \
-  -var-file="terraform.tfvars" \
-  -var="access_token=$ACCESS_TOKEN" \
-  -var='secret_values={}' \
-  module.firestore.google_firestore_database.database projects/${PROJECT_ID}/databases/${FIRESTORE_DB} || echo "Firestore Database import failed or already imported."
-
-# Secret Manager Secrets
-echo "--- Importing Secrets ---"
-
-# Additional secrets from config.yaml
-DEFAULT_SECRETS="GOOGLE_ADS_DEVELOPER_TOKEN GOOGLE_ADS_REFRESH_TOKEN GOOGLE_ADS_CLIENT_ID GOOGLE_ADS_CLIENT_SECRET"
-ALL_SECRETS="${DEFAULT_SECRETS} ${ADDITIONAL_SECRETS}"
-
-for secret_name in ${ALL_SECRETS}; do
-  echo "Attempting to import secret: ${secret_name}"
-  terraform -chdir=terraform import \
-    -var-file="terraform.tfvars" \
-    -var="access_token=$ACCESS_TOKEN" \
-    -var='secret_values={}' \
-  "module.secret_manager.google_secret_manager_secret.secrets[\"${secret_name}\"]" projects/${PROJECT_ID}/secrets/${secret_name} || echo "${secret_name} import failed or already imported."
-done
-
-echo "--- Finished attempting to import resources ---"
-
 
 # 11. Run Terraform to deploy all infrastructure
 echo "--- Running Terraform to deploy all services ---"
@@ -297,8 +267,8 @@ terraform -chdir=terraform apply -auto-approve -var-file="terraform.tfvars" \
 
 echo "--- Deployment complete! ---"
 
-# 12. Upload Google Ads Configuration to Firestore
-echo "--- Uploading Google Ads Configuration to Firestore ---"
+# 12. Upload Firestore Configuration to Firestore
+echo "--- Uploading GoogleAds, SA360 and CustomerInstructions to Firestore ---"
 CONFIG_JSON="./config/samples/firestore_config.json"
 UPLOAD_SCRIPT="./scripts/deployment/upload_config.py"
 

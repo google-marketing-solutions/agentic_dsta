@@ -93,7 +93,7 @@ The following diagram illustrates the architecture of the Agentic Dynamic Signal
     gcloud config set project [YOUR_PROJECT_ID]
     ```
 
-*   The user or principal running the `deploy.sh` script for the *first time* needs sufficient permissions to create and configure service accounts, IAM policies, and other project resources. The `roles/owner` role is the simplest way to ensure this. Alternatively, a combination of roles like `roles/editor`, `roles/resourcemanager.projectIamAdmin`, `roles/iam.serviceAccountAdmin`, `roles/serviceusage.serviceUsageAdmin`, etc., would be required.
+*   The user or principal running the `deploy.sh` script for the *first time* needs sufficient permissions to create and configure service accounts, IAM policies, and other project resources. The `roles/owner` and `roles/iam.serviceAccountTokenCreator` role is the simplest way to ensure this.
 *   The `deploy.sh` script creates a dedicated service account (`<resource_prefix>-deployer@<project_id>.iam.gserviceaccount.com`) and grants it a specific set of roles required to deploy and manage the application infrastructure. These roles include, but are not limited to:
     *   `roles/viewer`
     *   `roles/serviceusage.serviceUsageAdmin`
@@ -110,12 +110,10 @@ The following diagram illustrates the architecture of the Agentic Dynamic Signal
     *   And others as defined in `infra/deploy.sh`.
 *   Subsequent runs of `deploy.sh` use this service account's permissions via impersonation.
 
-### 5.1.1 API Hub Setup
+*   **Enable Compute Engine API:** Ensure the [Compute Engine API](https://console.cloud.google.com/apis/library/compute.googleapis.com) is enabled in your project. This is required for intermediate build steps.
 
-This solution relies on Google Cloud API Hub. Please perform the following one-time setup in your Google Cloud Project:
-
-1.  **Enable API Hub API:**
-    *   Follow the instructions in the [provisioning guide](https://docs.cloud.google.com/apigee/docs/apihub/provision) to enable the API Hub API in your project.
+*   **API Hub Setup:** Follow the [provisioning guide](https://docs.cloud.google.com/apigee/docs/apihub/provision) to enable the Google Cloud API Hub API in your project.
+    *   **Crucial:** You must check **"Enable Semantic search capability"** during the enablement process.
 
 ### 5.2. Local Environment
 
@@ -132,7 +130,7 @@ This solution requires several credentials to access Google Cloud and Google Ads
 This solution uses public Google APIs (Weather, Pollen, AirQuality) which require a standard Google API Key.
 
 1.  **Enable APIs:**
-    *   Enable the [Pollen API](https://pantheon.corp.google.com/marketplace/product/google/pollen.googleapis.com), [AirQuality API](https://pantheon.corp.google.com/marketplace/product/google/air-quality.googleapis.com), and [Weather API](https://pantheon.corp.google.com/marketplace/product/google/weather.googleapis.com) in your Google Cloud Project.
+    *   Enable the [Pollen API](https://console.cloud.google.com/marketplace/product/google/pollen.googleapis.com), [AirQuality API](https://console.cloud.google.com/marketplace/product/google/airquality.googleapis.com), and [Weather API](https://console.cloud.google.com/marketplace/product/google/weather.googleapis.com) in your Google Cloud Project.
 2.  **Create API Key:**
     *   Go to the [Credentials page](https://console.cloud.google.com/apis/credentials) in your Google Cloud Console.
     *   Click **Create Credentials** > **API key**.
@@ -147,8 +145,8 @@ Follow the official Google Ads API documentation to obtain your developer token,
     *   Apply for a developer token through your Google Ads manager account. Follow the instructions at [Get a Developer Token](https://developers.google.com/google-ads/api/docs/first-call/dev-token).
 
 2.  **OAuth2 Client ID and Client Secret:**
-    *   Configure an [OAuth2 consent screen](https://pantheon.corp.google.com/apis/credentials/consent) (If not already existing) and create credentials for a **Web app**. This will provide you with a client ID and client secret. Follow the guide at [Create a Client ID and Client Secret](https://developers.google.com/google-ads/api/docs/oauth/cloud-project#create_a_client_id_and_client_secret).
-    *   **Important:** On your OAuth consent screen [configuration](https://pantheon.corp.google.com/auth/scopes?project=gta-solutions-exp), you must add the Google Ads API scope: `https://www.googleapis.com/auth/adwords` and `https://www.googleapis.com/auth/spreadsheets`.
+    *   Configure an [OAuth2 consent screen](https://console.cloud.google.com/apis/credentials/consent) (If not already existing) and create credentials for a **Web app**. This will provide you with a client ID and client secret. Follow the guide at [Create a Client ID and Client Secret](https://developers.google.com/google-ads/api/docs/oauth/cloud-project#create_a_client_id_and_client_secret).
+    *   **Important:** On your OAuth consent screen [configuration](https://console.cloud.google.com/auth/scopes), you must add the Google Ads API scope: `https://www.googleapis.com/auth/adwords` and `https://www.googleapis.com/auth/spreadsheets`.
     *   Create OAuth2 Client ID and Client Secret for Web Application. 
         *   Make sure to add `http://127.0.0.1:8080` to the list of **Authorized redirect URIs**. The `generate_user_credentials.py` script uses this URI to capture the authorization response. Failure to add this will result in a `redirect_uri_mismatch` error.
 
@@ -164,7 +162,7 @@ Follow the official Google Ads API documentation to obtain your developer token,
         *   You can find the example script here: [`generate_user_credentials.py`](https://github.com/googleads/google-ads-python/blob/main/examples/authentication/generate_user_credentials.py)
     *   **Run the script:** Execute the script, providing your Client ID and Client Secret obtained in the previous step:
         ```bash
-        python3 generate_user_credentials.py -c  --client_secret=YOUR_CLIENT_SECRET
+        python3 generate_user_credentials.py --client_secrets_path YOUR_CLIENT_SECRET_JSON_PATH
         ```
     *   **Authorization:** The script will output a URL. Copy this URL and open it in your web browser.
     *   Log in with the Google account that has access to the Google Ads account you want to manage.
@@ -181,26 +179,9 @@ Follow the official Google Ads API documentation to obtain your developer token,
         *   OAuth2 Refresh Token
         *   Google API Key
 
-Once you have collected all these credentials, have them ready. You will be prompted to enter them securely during the first run of the deployment script. You do **not** need to put them in any file.
+Once you have collected all these credentials, have them ready. You will be prompted to enter them securely during the run of the deployment script. You do **not** need to put them in any file.
 
-### 6.3. Granting Service Account Access (Cloud Run)
 
-The solution runs on Google Cloud Run and uses a dedicated Service Account for its identity. To allow the agent to manage your Google Ads campaigns, you must add this Service Account to your Google Ads account.
-
-1.  **Identify the Service Account Email:**
-    After deployment (or based on your config), the Service Account email will be:
-    `[resource_prefix]-runner@[project_id].iam.gserviceaccount.com`
-    *   Default `resource_prefix` is usually `dsta`.
-    *   Example: `dsta-runner@my-project-id.iam.gserviceaccount.com`
-
-2.  **Add to Google Ads:**
-    *   Log in to your Google Ads account.
-    *   Navigate to **Admin** > **Access and security**.
-    *   Click the **+** button to add a user.
-    *   Enter the **Service Account email** address.
-    *   Select **Standard** (or Admin) access level.
-    *   Click **Send invitation**.
-    *   *Note: Service Accounts typically accept the invitation automatically or do not require acceptance steps if within the same organization context.*
 
 ## 7. Installation and Deployment
 
@@ -226,11 +207,10 @@ All deployment parameters are managed in the `config.yaml` file.
 
 2.  **Edit the configuration:**
     Open `config/app/config.yaml`.
-    *   Fill in the non-sensitive values like `project_id`.
-    *   **Advanced Secrets:** If you need to inject the `GOOGLE_API_KEY`, uncomment the `additional_secrets` section:
+    *   Fill in the non-sensitive values.
+    *   **Advanced Secrets:** If you need to inject additional secrets like `GOOGLE_API_KEY`, add them to the `additional_secrets` section:
         ```yaml
-        additional_secrets:
-          - "GOOGLE_API_KEY"
+        additional_secrets: ["GOOGLE_API_KEY"]
         ```
     *   Do **not** put the actual secret values in this file. You will be prompted for them during deployment.
 
@@ -242,7 +222,15 @@ Execute the `deploy.sh` script from the `infra` directory:
 bash deploy.sh
 ```
 
-**First-Time Setup:** The first time you run this script, it will detect that your secret credentials are not yet stored. It will securely prompt you to enter each required credential one by one. These are the credentials you collected in the "Generating Required Credentials" step.
+When you run this script, Terraform will prompt you to enter the values for your secrets (defined in `config.yaml` and default secrets like `GOOGLE_ADS_DEVELOPER_TOKEN`).
+
+**Important:** You must enter these values in a specific **Map format** when prompted for `var.secret_values`.
+Format: `{"SECRET_NAME_1"="value1", "SECRET_NAME_2"="value2", ...}`
+
+Example input:
+`{"GOOGLE_ADS_DEVELOPER_TOKEN"="ReplaceWithToken", "GOOGLE_ADS_REFRESH_TOKEN"="ReplaceWithRefreshToken", "GOOGLE_ADS_CLIENT_ID"="ReplaceWithClientId", "GOOGLE_ADS_CLIENT_SECRET"="ReplaceWithClientSecret", "GOOGLE_API_KEY"="ReplaceWithApiKey"}`
+
+The script matches these keys to the `additional_secrets` in your config and the default required secrets.
 
 This script will:
 1.  Check for the required secrets in Google Secret Manager and create them if they don't exist (this is the interactive part).
@@ -251,9 +239,25 @@ This script will:
 4.  Generate a `terraform.tfvars` file from your `config.yaml`.
 5.  Initialize and apply the Terraform configuration to deploy all the necessary infrastructure.
 
-On subsequent runs, the script will see that the secrets already exist and will skip straight to the deployment, making it fully automatable.
-
 The deployment will take several minutes to complete.
+
+### Step 4: Grant Service Account Access (Cloud Run)
+
+The solution runs on Google Cloud Run and uses a dedicated Service Account for its identity. To allow the agent to manage your Google Ads campaigns, you must add this Service Account to your Google Ads account.
+
+1.  **Identify the Service Account Email:**
+    After deployment (or based on your config), the Service Account email will be:
+    `[resource_prefix]-runner@[project_id].iam.gserviceaccount.com`
+    *   Example: `dsta-runner@my-project-id.iam.gserviceaccount.com`
+
+2.  **Add to Google Ads:**
+    *   Log in to your Google Ads account.
+    *   Navigate to **Admin** > **Access and security**.
+    *   Click the **+** button to add a user.
+    *   Enter the **Service Account email** address.
+    *   Select **Standard** (or Admin) access level.
+    *   Click **Send invitation**.
+    *   *Note: Service Accounts typically accept the invitation automatically or do not require acceptance steps if within the same organization context.*
 
 ## 8. Configuration Parameters
 
@@ -263,22 +267,20 @@ The following table describes each parameter in the `config.yaml` file:
 | ------------------------------ | ------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
 | `project_id`                   | **Required.** Your Google Cloud Project ID.                                                              | `"[YOUR_PROJECT_ID]"`                        |
 | `region`                       | The primary Google Cloud region for deploying resources.                                                | `"us-central1"`                               |
-| `service_name`                 | The name for your Cloud Run service.                                                                    | `"cloud-run-dsta-tf"`                         |
+| `resource_prefix`              | A prefix for all resource names (Service Accounts, Buckets, etc.).                                      | `"gta-demo"`                                  |
 | `allow_unauthenticated`        | If `true`, the Cloud Run service will be publicly accessible. Set to `false` for production.           | `false`                                       |
-| `firestore_database_name`      | The name for your Firestore database instance.                                                          | `"dsta-agentic-firestore-tf"`                 |
-| `firestore_location_id`        | The location for your Firestore database (e.g., `nam5` for North America).                              | `"nam5"`                                      |
-| `firestore_location_id`        | The location for your Firestore database (e.g., `nam5` for North America).                              | `"nam5"`                                      |
 | `firestore_database_type`      | The type of Firestore database to create (`FIRESTORE_NATIVE` or `DATASTORE_MODE`).                        | `"FIRESTORE_NATIVE"`                          |
 | `additional_secrets`           | List of extra secrets to manage (e.g., `GOOGLE_API_KEY`).                                               | `["GOOGLE_API_KEY"]`                          |
-| `artifact_repository_id`       | The name for your Artifact Registry repository.                                                         | `"agentic-dsta-repo"`                         |
-| `apihub_instance_id`           | The ID for your API Hub instance.                                                                       | `"default-instance"`                          |
-| `scheduler_cron`               | The cron schedule for triggering the marketing automation agent.                                        | `"0 0 * * *"`                                 |
+| `googleads_scheduler_schedule` | The cron schedule for triggering the Google Ads agent.                                                  | `"0 0 * * *"`                                 |
+| `sa360_scheduler_schedule`     | The cron schedule for triggering the SA360 agent.                                                       | `"0 0 * * *"`                                 |
+| `googleads_customer_id`        | The Google Ads Customer ID for the scheduler job payload.                                               | `"1234567890"`                                |
+| `sa360_customer_id`            | The SA360 Customer ID for the scheduler job payload.                                                    | `"1234567890"`                                |
 
 ## 9. Data Models and APIs
 
 ### 9.1. Firestore Data Model
 
-The solution uses Google Cloud Firestore to store business rules and campaign configurations. The primary collections are `GoogleAdsConfig` and `SA360Config`.
+The solution uses Google Cloud Firestore to store business rules and campaign configurations. The primary collections are `GoogleAdsConfig`, `SA360Config`, and `CustomerInstructions`.
 
 **Collection: `GoogleAdsConfig`**
 
@@ -305,6 +307,14 @@ Each document in this collection represents a SA360 customer account. The docume
     *   **`campaignId`** (Number): The ID of the Google Ads campaign.
     *   **`instruction`** (String): The natural language instruction for the agent to follow (e.g., "If the pollen count is high, pause the campaign.").
 
+**Collection: `CustomerInstructions`**
+
+Each document in this collection represents the workflow instructions for a specific customer. The document ID should be the `customer_id`.
+
+**Document Schema:**
+
+*   **`instruction`** (String): A detailed natural language description of the optimization workflow the agent should execute for this customer. This includes steps for fetching data, evaluating campaigns, and logging decisions. Use this to provide guardrails for the agent.
+
 ### 9.2. API Specifications
 
 The solution leverages external APIs registered in Google Cloud API Hub to gather real-time data for decision-making. The following APIs are included by default:
@@ -320,6 +330,17 @@ The solution leverages external APIs registered in Google Cloud API Hub to gathe
     *   `location.longitude`
     *   `days`
 *   **Usage:** The Marketing Agent uses this API to fetch pollen count data, which can be used as a demand signal for products like allergy medication.
+
+**Google Air Quality API**
+
+*   **Description:** Provides air quality forecast data for a specified location.
+*   **Endpoint:** `/v1/forecast:lookup`
+*   **Key Parameters:**
+    *   `location.latitude`
+    *   `location.longitude`
+    *   `dateTime`
+    *   `extraComputations` (e.g., `HEALTH_RECOMMENDATIONS`)
+*   **Usage:** The Marketing Agent uses air quality data (AQI, pollutants, health recommendations) to inform campaigns for products like air purifiers or masks.
 
 **Google Weather API**
 
@@ -388,7 +409,7 @@ This gives you two flexible options for managing credentials.
 
 #### Option A: Use the Existing `GOOGLE_API_KEY`
 
-If your new API can use the same generic `GOOGLE_API_KEY` that the Pollen and Weather APIs use, no infrastructure changes are needed.
+If your new API can use the same generic `GOOGLE_API_KEY` that the Pollen, Air Quality and Weather APIs use, no infrastructure changes are needed.
 
 1.  **Register your API in API Hub.**
 2.  **Restart your Cloud Run service.** You can do this from the Google Cloud Console. A restart is sufficient for the agent to re-initialize and discover the new API.
@@ -404,8 +425,7 @@ If your new API requires its own unique key for security or tracking purposes, y
 3.  **Add the Secret Name to `config.yaml`:**
     Open your `infra/config.yaml` file and add this secret name to the `additional_secrets` list.
     ```yaml
-    additional_secrets:
-      - MY_STOCK_SERVICE_API_KEY
+    additional_secrets: ["MY_STOCK_SERVICE_API_KEY"]
     ```
 4.  **Run the Deployment Script to Provision the Secret:**
     Execute the `deploy.sh` script again. This step **does not rebuild or redeploy your application code**. It performs a quick infrastructure update to:
@@ -480,7 +500,7 @@ The URL for your Cloud Run service will be printed at the end of the deployment 
 
 The core of the solution is the automated execution of the **Decision Agent**, which acts as the primary decision-maker.
 
-A Google Cloud Scheduler job is deployed by Terraform to trigger this agent at a regular frequency (defined by the `scheduler_cron` parameter in your `config.yaml`). On each run, the scheduler sends a request to the agent with a preset instruction, such as: *"Run daily check based on current demand signals and business rules."*
+A Google Cloud Scheduler job is deployed by Terraform to trigger this agent at a regular frequency (defined by the `googleads_scheduler_schedule` and `sa360_scheduler_schedule` parameters in your `config.yaml`). On each run, the scheduler sends a request to the agent with a preset instruction, such as: *"Run daily check based on current demand signals and business rules."*
 
 The Decision Agent then follows its instructions to:
 1.  Fetch real-time data using the **API Hub Toolset**.
@@ -533,6 +553,18 @@ bash destroy.sh
 ```
 
 The script will prompt for confirmation before destroying the resources. This will remove all the Google Cloud resources managed by Terraform in this solution.
+
+**Note on Firestore:**
+The default behavior for the Firestore database resources is to **not** be deleted when you run `destroy.sh` (deletion policy is `ABANDON`). This prevents accidental data loss. If you wish to delete the database, you must do so manually in the Google Cloud Console.
+
+**Persisted Resources:**
+The following resources are **NOT** deleted by `destroy.sh` and may require manual cleanup if you wish to completely wipe the project:
+*   **Google Cloud APIs:** APIs enabled during deployment (e.g., Cloud Run API, Vertex AI API) remain enabled.
+*   **Deployer Service Account:** The service account used to run the deployment script (`[prefix]-deployer`) is created by the shell script and is not managed by Terraform.
+*   **Terraform State Bucket:** The Google Cloud Storage bucket containing the Terraform state file is preserved to maintain state history.
+*   **Artifact Registry:** The repository itself is not deleted, as Terraform only reads it as a data source.
+*   **API Hub Registrations:** APIs registered in API Hub are not automatically unregistered.
+
 
 ## 17. Solution Artifacts
 
