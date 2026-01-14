@@ -68,19 +68,21 @@ def get_locations(campaign_id: str, customer_id: str, service):
 
 
 def get_sa360_campaign_details(campaign_id: str, customer_id: str) -> Dict[str, Any]:
-  """Fetches details for a specific SA360 campaign.
+  """Fetches comprehensive details for a specific SA360 campaign from the Reporting API.
+
+  Use this tool to get real-time campaign data directly from SA360, including
+  status, effective dates, engine ID, and serving status.
 
   Args:
-      campaign_id: The ID of the campaign to fetch.
-      customer_id: The ID of the customer.
+      campaign_id: The unique ID of the campaign to fetch.
+      customer_id: The SA360 customer ID (10 digits).
 
   Returns:
-      A dictionary containing the campaign details.
+            A dictionary containing the campaign fields relative to the reporting view.
 
   Raises:
-    ValueError: If the campaign with the given ID is not found or if the
-      customer_id is not a valid 10-digit value.
-    RuntimeError: If an API error occurs.
+    ValueError: If valid IDs are not provided or not found.
+    RuntimeError: If an API error (HttpError) occurs.
   """
   if not customer_id.isdigit() or len(customer_id) != 10:
     raise ValueError("customer_id must be a 10-digit value.")
@@ -172,13 +174,18 @@ def get_sa360_campaign_details(campaign_id: str, customer_id: str) -> Dict[str, 
 
 
 def get_sa360_campaign_details_sheet(campaign_id: str, sheet_id: str, sheet_name: str) -> Dict[str, Any]:
-  """Fetches details for a specific SA360 campaign from the Google Sheet.
+  """Fetches campaign details stored in a Google Sheet configuration file.
+
+  Use this tool to read campaign configuration parameters from a spreadsheet,
+  which may act as a staging or management layer for SA360 campaigns.
 
   Args:
-      campaign_id: The ID of the campaign to fetch.
+      campaign_id: The ID of the campaign row to look for.
+      sheet_id: The ID of the Google Sheet (from URL).
+      sheet_name: The specific tab/sheet name to read from.
 
   Returns:
-      A dictionary containing the campaign details, or an error message.
+      A dictionary representing the row data (header-mapped) for the found campaign.
   """
   service = get_sheets_service()
   if not service:
@@ -272,14 +279,20 @@ def _update_campaign_property(
 def update_sa360_campaign_status(
     campaign_id: str, status: str, sheet_id: str, sheet_name: str, customer_id: str
 ) -> Dict[str, Any]:
-  """Updates the status of an SA360 campaign to 'ENABLED' or 'PAUSED'.
+  """Updates the status column of an SA360 campaign in the Google Sheet.
+
+  Use this tool to ENABLE or PAUSE a campaign by modifying its 'Campaign status'
+  entry in the configuration sheet.
 
   Args:
       campaign_id: The ID of the campaign to update.
-      status: The new status for the campaign ('ENABLED' or 'PAUSED').
+      status: The new status ('ENABLED' or 'PAUSED').
+      sheet_id: The ID of the Google Sheet.
+      sheet_name: The name of the sheet tab.
+      customer_id: The ID of the customer.
 
   Returns:
-      A dictionary containing a success or error message.
+      A dictionary containing a success message with the updated status.
   """
   if compare_campaign_data(get_sa360_campaign_details_sheet(campaign_id, sheet_id, sheet_name), get_sa360_campaign_details(campaign_id, customer_id)):
     upper_status = status.upper()
@@ -301,21 +314,22 @@ def update_sa360_campaign_geolocation(
     customer_id: str,
     remove: bool = False,
 ) -> Dict[str, Any]:
-  """Updates or removes the geo-targeting for an SA360 campaign in the Google Sheet.
+  """Updates or removes the geo-targeting configuration for an SA360 campaign.
 
-  If 'remove' is True, a new record is created in the sheet to remove the
-  geo-location. If 'remove' is False, the existing campaign's location is updated.
+  This tool modifies the Google Sheet configuration.
+  - To ADD/UPDATE a location: Sets 'Location' cell for the campaign row.
+  - To REMOVE: appends a new row with 'Row Type'='excluded location' and 'Action'='deactivate'.
 
   Args:
-      campaign_id: The ID of the campaign to modify.
-      location_name: The name of the location to update or remove.
-      sheet_id: The ID of the Google Sheet.
-      sheet_name: The name of the sheet.
-      customer_id: The ID of the customer.
-      remove: If True, the location will be removed. Defaults to False.
+      campaign_id: The ID of the campaign.
+      location_name: The name of the location (e.g., "New York").
+      sheet_id: The Google Sheet ID.
+      sheet_name: The spreadsheet tab name.
+      customer_id: The SA360 customer ID.
+      remove: If True, adds a removal record. If False, updates the campaign's location cell.
 
   Returns:
-      A dictionary containing a success or error message.
+      A dictionary containing a success message describing the action taken.
   """
   if compare_campaign_data(get_sa360_campaign_details_sheet(campaign_id, sheet_id, sheet_name), get_sa360_campaign_details(campaign_id, customer_id)):
     if remove:
@@ -391,7 +405,20 @@ def update_sa360_campaign_geolocation(
 def update_sa360_campaign_budget(
     campaign_id: str, budget: float, sheet_id: str, sheet_name: str, customer_id: str
 ) -> Dict[str, Any]:
-  """Updates the budget for an SA360 campaign in the Google Sheet."""
+  """Updates the budget value for an SA360 campaign in the Google Sheet.
+
+  Use this tool to modify the 'Budget' column for a specific campaign in the spreadsheet.
+
+  Args:
+      campaign_id: The ID of the campaign.
+      budget: The new budget amount (numeric value).
+      sheet_id: The Google Sheet ID.
+      sheet_name: The spreadsheet tab name.
+      customer_id: The SA360 customer ID.
+
+  Returns:
+      A dictionary indicating success.
+  """
   if compare_campaign_data(get_sa360_campaign_details_sheet(campaign_id, sheet_id, sheet_name), get_sa360_campaign_details(campaign_id, customer_id)):
     return _update_campaign_property(campaign_id, "Budget", budget, sheet_id, sheet_name)
   else:
