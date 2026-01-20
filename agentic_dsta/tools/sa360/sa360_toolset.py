@@ -309,7 +309,7 @@ def update_sa360_campaign_status(
     )
   else:
     _update_campaign_property(campaign_id, "Row Type", "", sheet_id, sheet_name)
-    raise RuntimeError("Data mismatch between Google Sheet and SA360 API.")
+    raise RuntimeError("Data mismatch between Google Sheet and SA360 API. Kindly go to the Sheet and fix the data.")
 
 
 def update_sa360_campaign_geolocation(
@@ -406,7 +406,7 @@ def update_sa360_campaign_geolocation(
       )
   else:
     _update_campaign_property(campaign_id, "Row Type", "", sheet_id, sheet_name)
-    raise RuntimeError("Data mismatch between Google Sheet and SA360 API.")
+    raise RuntimeError("Data mismatch between Google Sheet and SA360 API. Kindly go to the Sheet and fix the data.")
 
 
 def update_sa360_campaign_budget(
