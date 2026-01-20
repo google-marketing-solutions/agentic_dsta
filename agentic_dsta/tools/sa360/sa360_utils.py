@@ -81,6 +81,27 @@ def compare_campaign_data(
   Returns:
       True if the specified fields match, False otherwise.
   """
+  print("*******************************************")
+  print(sheet_row.get("Campaign ID"))
+  print(sheet_row.get("Campaign"))
+  print(sheet_row.get("Campaign status"))
+  print(sheet_row.get("Campaign type"))
+  print(sheet_row.get("Budget"))
+  print(sheet_row.get("Bid strategy type"))
+  print(sheet_row.get("Campaign start date"))
+  print(sheet_row.get("Campaign end date"))
+  print(sheet_row.get("Location"))
+  print("*******************************************")
+  print(sa360_campaign["campaign"]["id"])
+  print(sa360_campaign["campaign"]["name"])
+  print(sa360_campaign["campaign"].get("status"))
+  print(sa360_campaign["campaign"].get("advertisingChannelType"))
+  print(sa360_campaign["campaign"].get("budget"))
+  print(sa360_campaign["campaign"].get("biddingStrategyType"))
+  print(sa360_campaign["campaign"].get("startDate"))
+  print(sa360_campaign["campaign"].get("endDate"))
+  print(sa360_campaign["campaign"].get("location"))
+  print("*******************************************")
   if sheet_row.get("Campaign ID") and len(str(sheet_row.get("Campaign ID")).strip())>0 and str(sheet_row.get("Campaign ID")) != str(sa360_campaign["campaign"]["id"]):
     return False
   if sheet_row.get("Campaign") and len(str(sheet_row.get("Campaign")).strip())>0 and str(sheet_row.get("Campaign")) != sa360_campaign["campaign"]["name"]:
@@ -97,8 +118,19 @@ def compare_campaign_data(
         return False
   except (ValueError, TypeError):
     return False
-  if sheet_row.get("Bid strategy type") and len(str(sheet_row.get("Bid strategy type")).strip())>0 and sheet_row.get("Bid strategy type") != sa360_campaign["campaign"].get("biddingStrategyType"):
-    return False
+  if sheet_row.get("Bid strategy type") and len(
+      str(sheet_row.get("Bid strategy type")).strip()
+  ) > 0:
+    sheet_bid_strategy = (
+        str(sheet_row.get("Bid strategy type")).lower().replace("_", " ")
+    )
+    api_bid_strategy = (
+        str(sa360_campaign["campaign"].get("biddingStrategyType", ""))
+        .lower()
+        .replace("_", " ")
+    )
+    if sheet_bid_strategy != api_bid_strategy:
+      return False
   if sheet_row.get("Campaign start date") and len(str(sheet_row.get("Campaign start date")).strip())>0 and sheet_row.get("Campaign start date") != sa360_campaign["campaign"].get("startDate"):
     return False
   if sheet_row.get("Campaign end date") and len(str(sheet_row.get("Campaign end date")).strip())>0 and sheet_row.get("Campaign end date") != sa360_campaign["campaign"].get("endDate"):
