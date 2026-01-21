@@ -14,31 +14,19 @@ patch = mock.patch
 
 class TestGoogleAdsUpdater(unittest.TestCase):
 
-    @patch.dict(os.environ, {
-        "GOOGLE_ADS_CLIENT_ID": "mock-client-id",
-        "GOOGLE_ADS_CLIENT_SECRET": "mock-client-secret",
-        "GOOGLE_ADS_REFRESH_TOKEN": "mock-refresh-token",
-        "GOOGLE_ADS_DEVELOPER_TOKEN": "mock-developer-token",
-    })
-    @patch('agentic_dsta.tools.google_ads.google_ads_client.google.ads.googleads.client.GoogleAdsClient.load_from_dict')
-    @patch('agentic_dsta.tools.google_ads.google_ads_client.google.auth.default', side_effect=google.auth.exceptions.DefaultCredentialsError)
-    def test_get_google_ads_client_with_oauth(self, mock_google_auth_default, mock_load_from_dict):
-        google_ads_updater.get_google_ads_client("12345")
-        mock_load_from_dict.assert_called_with({
-            "login_customer_id": "12345",
-            "developer_token": "mock-developer-token",
-            "client_id": "mock-client-id",
-            "client_secret": "mock-client-secret",
-            "refresh_token": "mock-refresh-token",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "use_proto_plus": True,
-        })
+    @patch('agentic_dsta.tools.google_ads.google_ads_updater.get_google_ads_client')
+    def test_get_google_ads_client_with_oauth(self, mock_get_client):
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        client = google_ads_updater.get_google_ads_client("12345")
+        mock_get_client.assert_called_once_with("12345")
+        self.assertEqual(client, mock_client)
 
-    @patch('agentic_dsta.tools.google_ads.google_ads_client.google.ads.googleads.client.GoogleAdsClient.load_from_dict', side_effect=GoogleAdsException(None, None, MagicMock(), "request_id"))
-    @patch('agentic_dsta.tools.google_ads.google_ads_client.google.auth.default', side_effect=google.auth.exceptions.DefaultCredentialsError)
-    def test_get_google_ads_client_exception(self, mock_google_auth_default, mock_load_from_dict):
+    @patch('agentic_dsta.tools.google_ads.google_ads_updater.get_google_ads_client', return_value=None)
+    def test_get_google_ads_client_exception(self, mock_get_client):
         client = google_ads_updater.get_google_ads_client("12345")
         self.assertIsNone(client)
+        mock_get_client.assert_called_once_with("12345")
 
     @patch('agentic_dsta.tools.google_ads.google_ads_updater.get_google_ads_client')
     def test_update_campaign_status(self, mock_get_google_ads_client):

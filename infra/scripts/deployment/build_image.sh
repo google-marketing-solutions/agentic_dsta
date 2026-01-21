@@ -48,6 +48,4 @@ BUILD_ID=$(gcloud builds submit "$SOURCE_DIR" \
   --project "$PROJECT_ID" \
   --format='value(id)')
 
-# The image URL is now constructed in the deploy.sh script.
-
 echo "✅ Build Complete."

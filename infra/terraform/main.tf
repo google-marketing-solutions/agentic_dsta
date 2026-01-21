@@ -66,11 +66,11 @@ module "secret_manager" {
 module "apihub" {
   source          = "./modules/apihub"
   project_id      = var.project_id
-  location        = var.region # This is the regional location for the instance itself
+  location        = var.region
   specs_dir       = "${path.module}/${var.apihub_specs_dir}"
   vertex_location = var.apihub_vertex_location
   account_email   = google_service_account.run_sa.email
-  access_token    = var.access_token # This is the access token for the service account to initialize API Hub
+  access_token    = var.access_token
 
   depends_on = [google_project_service.apis]
 }
@@ -99,9 +99,11 @@ module "cloud_run_service" {
   service_account_email = google_service_account.run_sa.email
 
   env_vars = merge(var.run_service_env_vars, {
-    GOOGLE_CLOUD_PROJECT = var.project_id
-    GOOGLE_CLOUD_LOCATION = var.region
-    FIRESTORE_DB          = local.firestore_database_name
+    GOOGLE_CLOUD_PROJECT              = var.project_id
+    GOOGLE_CLOUD_LOCATION             = var.region
+    FIRESTORE_DB                      = local.firestore_database_name
+    GOOGLE_ADS_FORCE_USER_CREDS     = var.google_ads_force_user_creds
+    SA360_FORCE_USER_CREDS          = var.sa360_force_user_creds
   })
   secret_env_vars = { for secret in module.secret_manager.secret_ids : secret => { name = secret, version = "latest" } }
   depends_on = [google_project_service.apis, module.secret_manager]

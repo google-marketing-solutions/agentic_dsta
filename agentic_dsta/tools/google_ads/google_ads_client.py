@@ -16,43 +16,36 @@
 import os
 import google.ads.googleads.client
 from google.ads.googleads.errors import GoogleAdsException
-import google.auth
-import google.auth.exceptions
 import logging
-
+from agentic_dsta.tools import auth_utils
 
 logger = logging.getLogger(__name__)
 
-
 def get_google_ads_client(customer_id: str):
   logger.debug("get_google_ads_client called", extra={'customer_id': customer_id})
-  """Initializes and returns a GoogleAdsClient."""
+  """Initializes and returns a GoogleAdsClient.\n\n  Authentication is controlled by auth_utils.get_credentials, potentially using\n  the GOOGLE_ADS_FORCE_USER_CREDS environment variable to force user creds\n  from Secret Manager.\n  """
+  scopes = ["https://www.googleapis.com/auth/adwords"]
   try:
-    try:
-      logger.debug("Attempting to use Application Default Credentials.")
-      # First, try to use Application Default Credentials.
-      credentials, _ = google.auth.default()
-      # Pass the credentials object directly to the client constructor.
+      credentials = auth_utils.get_credentials(
+          scopes=scopes,
+          service_name="Google Ads",
+          force_user_creds_env="GOOGLE_ADS_FORCE_USER_CREDS"
+      )
+
+      if not credentials:
+          logger.error("Failed to obtain credentials for Google Ads client")
+          return None
+
+      developer_token = os.environ.get("GOOGLE_ADS_DEVELOPER_TOKEN")
+      if not developer_token:
+          logger.error("GOOGLE_ADS_DEVELOPER_TOKEN not set in environment.")
+          return None
+
       return google.ads.googleads.client.GoogleAdsClient(
           credentials,
           login_customer_id=customer_id,
-          developer_token=os.environ.get("GOOGLE_ADS_DEVELOPER_TOKEN"),
+          developer_token=developer_token,
           use_proto_plus=True,
-      )
-    except google.auth.exceptions.DefaultCredentialsError:
-      logger.debug("ADC not found, falling back to environment variables.")
-      # If ADC are not found, fall back to environment variables.
-      config_data = {
-          "login_customer_id": customer_id,
-          "developer_token": os.environ.get("GOOGLE_ADS_DEVELOPER_TOKEN"),
-          "client_id": os.environ.get("GOOGLE_ADS_CLIENT_ID"),
-          "client_secret": os.environ.get("GOOGLE_ADS_CLIENT_SECRET"),
-          "refresh_token": os.environ.get("GOOGLE_ADS_REFRESH_TOKEN"),
-          "token_uri": "https://oauth2.googleapis.com/token",
-          "use_proto_plus": True,
-      }
-      return google.ads.googleads.client.GoogleAdsClient.load_from_dict(
-          config_data
       )
   except GoogleAdsException as ex:
     logger.error(
@@ -60,24 +53,19 @@ def get_google_ads_client(customer_id: str):
         exc_info=True,
         extra={'customer_id': customer_id}
     )
-    for error in ex.failure.errors:
-      logger.error(
-          "Google Ads API Error: %s - %s",
-          error.error_code,
-          error.message,
-          extra={
-              'customer_id': customer_id,
-              'error_code': str(error.error_code),
-              'error_message': error.message
-          }
-      )
+    if hasattr(ex, 'failure') and ex.failure:
+      for error in ex.failure.errors:
+        logger.error(
+            "Google Ads API Error: %s - %s",
+            error.error_code,
+            error.message,
+            extra={
+                'customer_id': customer_id,
+                'error_code': str(error.error_code),
+                'error_message': error.message
+            }
+        )
     return None
-
-if __name__ == '__main__':
-    logger.info("Testing logger - INFO", extra={'test_case': 123, 'user': 'test_user'})
-    logger.warning("Testing logger - WARNING")
-    try:
-        raise ValueError("Something went wrong")
-    except ValueError:
-        logger.error("Testing logger - ERROR with exception", exc_info=True, extra={'foo': 'bar'})
-    logger.debug("This DEBUG message should not appear with default LOG_LEVEL=INFO")
+  except Exception as e:
+      logger.exception(f"Error creating GoogleAdsClient: {e}")
+      return None

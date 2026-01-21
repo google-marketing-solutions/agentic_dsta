@@ -12,10 +12,7 @@ from agentic_dsta.main import app
 
 client = TestClient(app)
 
-
 import asyncio
-
-
 
 def test_scheduler_init_and_run_success():
     async def run_test():
@@ -31,17 +28,10 @@ def test_scheduler_init_and_run_success():
             "customer_id": "4086619433"
         }
 
-        # Patch run_decision_agent
-        # Patch where it is used in main.py because it is imported at top level
         with patch("agentic_dsta.main.run_decision_agent", new_callable=AsyncMock) as mock_run_agent:
             
             # Mock successful run
             mock_run_agent.return_value = {"status": "success"}
-
-            # We also need to patch starlette.concurrency.run_in_threadpool to simply await
-            # OR we trust that it runs the mock.
-            # However, run_in_threadpool runs sync functions in a thread.
-            # Our mock is a MagicMock (sync). So it should work fine.
 
             response = client.post(
                 "/scheduler/init_and_run",
@@ -63,22 +53,13 @@ def test_scheduler_init_and_run_session_failure():
         payload = {
             "app_name": "decision_agent",
             "new_message": {
-                # Invalid text format for regex to fail or we can mock exception
-                "parts": [{"text": "No customer id here"}],
+                "parts": [{"text": "No customer id here"}], # Lacks customer_id
                 "role": "user"
             }
         }
 
-        # When customer_id extraction fails, it raises ValueError
-        # Endpoint catches None customer_id? No, get_customer_id raises ValueError.
-        # But endpoint code: customer_id = get_customer_id_from_task(...)
-
-        # Checking logic in main.py:
-        # try:
-        #     customer_id = get_customer_id_from_task(task)
-        # except ValueError as e:
-        #     raise HTTPException(status_code=400, detail=str(e))
-
+        # The endpoint /scheduler/init_and_run is expected to return a 400
+        # when get_customer_id_from_task raises a ValueError.
         response = client.post("/scheduler/init_and_run", json=payload)
         assert response.status_code == 400
         assert "Missing customer_id" in response.json()["detail"]

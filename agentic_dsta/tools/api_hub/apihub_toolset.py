@@ -233,8 +233,6 @@ class DynamicMultiAPIToolset(BaseToolset):
                     loaded_count += 1
                     logger.info("✓ Loaded API: %s", api_id, extra={'api_id': api_id})
                 except Exception as e:
-
-                    # Skip APIs that can't be loaded (e.g., no spec)
                     logger.warning(
                         "✗ Skipping API %s: %s",
                         api_id,

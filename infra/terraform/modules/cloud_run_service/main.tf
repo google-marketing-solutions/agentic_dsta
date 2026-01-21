@@ -40,17 +40,8 @@ resource "google_cloud_run_v2_service" "default" {
           }
         }
       }
-      # Add resource limits if necessary
-      # resources {
-      #   limits = {
-      #     cpu    = "1000m"
-      #     memory = "512Mi"
-      #   }
-      # }
     }
     service_account = var.service_account_email
-    # max_instance_request_concurrency = 80
-    # timeout = "300s"
   }
 
 

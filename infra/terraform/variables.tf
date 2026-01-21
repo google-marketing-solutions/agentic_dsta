@@ -195,11 +195,20 @@ variable "run_service_env_vars" {
   }
 }
 
+# --- Auth Control Variables ---
+variable "google_ads_force_user_creds" {
+  description = "Set to 'true' to always use user credentials from Secret Manager for Google Ads."
+  type        = string
+  default     = "false"
+}
+
+variable "sa360_force_user_creds" {
+  description = "Set to 'true' to always use user credentials from Secret Manager for SA360."
+  type        = string
+  default     = "false"
+}
+
 # --- Scheduler Variables ---
-
-
-
-
 
 variable "sa_run_sse_scheduler_job_name" {
   description = "Name of sa-run-sse-job scheduler job."
