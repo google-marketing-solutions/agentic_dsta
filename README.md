@@ -52,7 +52,8 @@ This is not an officially supported Google product. This project is not eligible
   - [Error Handling](#error-handling)
 - [Usage](#usage)
   - [Interactive Web Interface](#interactive-web-interface)
-  - [Automated Execution via Cloud Scheduler](#automated-execution-via-cloud-scheduler)
+  - [Decision Agent Workflow and Configuration](#decision-agent-workflow-and-configuration)
+    - [Automated Execution via Cloud Scheduler](#automated-execution-via-cloud-scheduler)
 - [Security Best Practices](#security-best-practices)
   - [Created Service Accounts](#created-service-accounts)
 - [Troubleshooting](#troubleshooting)
@@ -187,10 +188,15 @@ The following diagram illustrates the architecture of the Agentic Dynamic Signal
     *   And others as defined in `infra/deploy.sh`.
 *   Subsequent runs of `deploy.sh` use this service account's permissions via impersonation.
 
-*   **Enable Compute Engine API:** Ensure the [Compute Engine API](https://console.cloud.google.com/apis/library/compute.googleapis.com) is enabled in your project. This is required for intermediate build steps.
-
-*   **API Hub Setup:** Follow the [provisioning guide](https://docs.cloud.google.com/apigee/docs/apihub/provision) to enable the Google Cloud API Hub API in your project.
-    *   **Crucial:** You must check **"Enable Semantic search capability"** during the enablement process.
+*   **Enable the following APIs in your project if not already enabled:**
+    *   [Compute Engine API](https://console.cloud.google.com/apis/library/compute.googleapis.com)
+    *   [Google Cloud API Hub API](https://docs.cloud.google.com/apigee/docs/apihub/provision) (Ensure "Enable Semantic search capability" is checked)
+    *   [Spreadsheets API](https://console.cloud.google.com/marketplace/product/google/sheets.googleapis.com)
+    *   [SA360 Reporting API](https://console.cloud.google.com/marketplace/product/google/searchads360.googleapis.com)
+    *   [Google Ads API](https://console.cloud.google.com/marketplace/product/google/googleads.googleapis.com)
+    *   [Pollen API](https://console.cloud.google.com/marketplace/product/google/pollen.googleapis.com)
+    *   [AirQuality API](https://console.cloud.google.com/marketplace/product/google/airquality.googleapis.com)
+    *   [Weather API](https://console.cloud.google.com/marketplace/product/google/weather.googleapis.com)
 
 ### Local Environment
 
@@ -206,24 +212,38 @@ This solution requires several credentials to access Google Cloud and Google Ads
 
 This solution uses public Google APIs (Weather, Pollen, AirQuality) which require a standard Google API Key.
 
-1.  **Enable APIs:**
-    *   Enable the [Pollen API](https://console.cloud.google.com/marketplace/product/google/pollen.googleapis.com), [AirQuality API](https://console.cloud.google.com/marketplace/product/google/airquality.googleapis.com), and [Weather API](https://console.cloud.google.com/marketplace/product/google/weather.googleapis.com) in your Google Cloud Project.
 2.  **Create API Key:**
     *   Go to the [Credentials page](https://console.cloud.google.com/apis/credentials) in your Google Cloud Console.
     *   Click **Create Credentials** > **API key**.
 3.  **Save Key:**
     *   Copy the key and save it. You will need to provide this as a secret named `GOOGLE_API_KEY` during deployment.
 
-### Google Ads API Credentials (OAuth2 User Flow)
+### User Credentials for Google Ads & SA360 (OAuth2 User Flow)
 
-Follow the official Google Ads API documentation to obtain your developer token, OAuth2 client ID, client secret, and refresh token.
+The application uses OAuth 2.0 credentials for a *user account* to interact with the Google Ads and Search Ads 360 APIs. These credentials (client ID, client secret, and refresh token) are securely stored in Google Secret Manager and accessed at runtime. This method is used when Application Default Credentials of the Cloud Run service account are insufficient or when forced via environment variables.
+
+**User Credential Secrets:**
+
+The following secrets are used for user-based OAuth 2.0 authentication:
+
+*   `USER_CLIENT_ID`: The OAuth 2.0 Client ID obtained from your Google Cloud Console.
+*   `USER_CLIENT_SECRET`: The OAuth 2.0 Client Secret.
+*   `USER_REFRESH_TOKEN`: The OAuth 2.0 Refresh Token for the authorized user.
+
+These secrets will be created or updated in Google Secret Manager when you run the `infra/deploy.sh` script. You will be prompted to enter the values interactively. Follow the steps below to obtain the necessary values *before* running the deployment script.
+
+Follow the steps below to obtain your Developer Token, and generate the credentials to store in Secret Manager.
 
 1.  **Developer Token:**
     *   Apply for a developer token through your Google Ads manager account. Follow the instructions at [Get a Developer Token](https://developers.google.com/google-ads/api/docs/first-call/dev-token).
 
 2.  **OAuth2 Client ID and Client Secret:**
     *   Configure an [OAuth2 consent screen](https://console.cloud.google.com/apis/credentials/consent) (If not already existing) and create credentials for a **Web app**. This will provide you with a client ID and client secret. Follow the guide at [Create a Client ID and Client Secret](https://developers.google.com/google-ads/api/docs/oauth/cloud-project#create_a_client_id_and_client_secret).
-    *   **Important:** On your OAuth consent screen [configuration](https://console.cloud.google.com/auth/scopes), you must add the Google Ads API scope: `https://www.googleapis.com/auth/adwords` and `https://www.googleapis.com/auth/spreadsheets`.
+    *   **Important:** On your OAuth consent screen [configuration](https://console.cloud.google.com/auth/scopes), you must add the following scopes:
+    *   `https://www.googleapis.com/auth/adwords` (for Google Ads)
+    *   `https://www.googleapis.com/auth/doubleclicksearch` (for SA360)
+    *   `https://www.googleapis.com/auth/spreadsheets` (for Google Sheets)
+    *   `https://www.googleapis.com/auth/cloud-platform` (for Google Cloud)
     *   Create OAuth2 Client ID and Client Secret for Web Application. 
         *   Make sure to add `http://127.0.0.1:8080` to the list of **Authorized redirect URIs**. The `generate_user_credentials.py` script uses this URI to capture the authorization response. Failure to add this will result in a `redirect_uri_mismatch` error.
 
@@ -246,7 +266,7 @@ Follow the official Google Ads API documentation to obtain your developer token,
     *   Grant the requested permissions (it should include the `adwords` scope).
     *   After granting permissions, you'll be redirected to a page on `127.0.0.1:8080` (or an error page if the redirect URI wasn't set up correctly). The script will capture the authorization code from the redirect.
     *   **Result:** The script will then exchange the authorization code for a refresh token and an access token, and print the refresh token to the console. It might also save the credentials to a `google-ads.yaml` file in your home directory.
-    *   **Copy the Refresh Token:** Securely copy the displayed refresh token. You will need this for your `config.yaml`.
+    *   **Copy Credentials:** Securely copy the Client ID, Client Secret, and the generated Refresh Token. You will need these values when running the `infra/deploy.sh` script.
 
 4.  **Review Collected Credentials:**
     *   Ensure you have the following list ready:
@@ -254,10 +274,31 @@ Follow the official Google Ads API documentation to obtain your developer token,
         *   OAuth2 Client ID
         *   OAuth2 Client Secret
         *   OAuth2 Refresh Token
-        *   Google API Key
+        *   Google API Key (for Weather/Pollen etc.)
 
-Once you have collected all these credentials, have them ready. You will be prompted to enter them securely during the run of the deployment script. You do **not** need to put them in any file.
+You will be prompted for all these secret values (USER_CLIENT_ID, USER_CLIENT_SECRET, USER_REFRESH_TOKEN, GOOGLE_ADS_DEVELOPER_TOKEN, GOOGLE_API_KEY, etc.) when running the `infra/deploy.sh` script in a later step.
 
+### Service Account vs. User Credentials
+
+The application can authenticate to Google Ads and SA360 APIs using two methods:
+
+1.  **Service Account Credentials (Default for Cloud Run):**
+    *   When deployed on Google Cloud Run, the application uses the assigned service account's Application Default Credentials (`[resource_prefix]-runner@[project_id].iam.gserviceaccount.com`).
+    *   This is the recommended method for automated workflows running on GCP.
+    *   Requires granting this service account appropriate access within your Google Ads and SA360 accounts.
+
+2.  **User Credentials (OAuth2):**
+    *   This method uses the OAuth2 credentials (Client ID, Client Secret, Refresh Token) of a specific user.
+    *   It's primarily intended for:
+        *   **Local Development:** When running the agent locally, where service account credentials are not available.
+        *   **Permission Issues:** If the Cloud Run service account lacks specific permissions that the user account has.
+    *   The `generate_user_credentials.py` script helps you obtain the `USER_REFRESH_TOKEN`.
+    *   To force the use of User Credentials even when on Cloud Run, you can set the following environment variables to `True`:
+        *   `GOOGLE_ADS_FORCE_USER_CREDS=True`
+        *   `SA360_FORCE_USER_CREDS=True`
+        *   `SHEETS_FORCE_USER_CREDS=True`
+
+The `agentic_dsta/tools/auth_utils.py` module contains the logic to automatically select the appropriate credentials based on the environment and these force flags.
 
 
 ## Installation and Deployment
@@ -305,7 +346,7 @@ When you run this script, Terraform will prompt you to enter the values for your
 Format: `{"SECRET_NAME_1"="value1", "SECRET_NAME_2"="value2", ...}`
 
 Example input:
-`{"GOOGLE_ADS_DEVELOPER_TOKEN"="ReplaceWithToken", "GOOGLE_ADS_REFRESH_TOKEN"="ReplaceWithRefreshToken", "GOOGLE_ADS_CLIENT_ID"="ReplaceWithClientId", "GOOGLE_ADS_CLIENT_SECRET"="ReplaceWithClientSecret", "GOOGLE_API_KEY"="ReplaceWithApiKey"}`
+`{"GOOGLE_ADS_DEVELOPER_TOKEN"="ReplaceWithToken", "GOOGLE_API_KEY"="ReplaceWithApiKey", "USER_CLIENT_ID"="ReplaceWithClientId", "USER_CLIENT_SECRET"="ReplaceWithClientSecret", "USER_REFRESH_TOKEN"="ReplaceWithRefreshToken"}`
 
 The script matches these keys to the `additional_secrets` in your config and the default required secrets.
 
@@ -444,6 +485,7 @@ For managing Search Ads 360 campaigns, this solution uses a Google Sheet-based b
     *   Click on Download button (right next to Download template (Optional) text)
 3.  **Additional Column:** Add an additional column named `Associated Campaign ID` to the Google sheet for Negative targeting (removing) of locations.
 4.  **Update Firestore config:** Add `SheetId` and `SheetName` to the firestore collection `SA360Config` for the Google Sheet with customer id as the document id.
+5.  **Share the Sheet:** You MUST share the Google Sheet with the Cloud Run service account: `[resource_prefix]-runner@[project_id].iam.gserviceaccount.com` (e.g., `dsta-runner@my-project-id.iam.gserviceaccount.com`) giving it at least **Editor** permissions. This allows the application to read and write to the sheet.
 5.  **Data sync validation:** As a prerequisite, an automated process validates the sheets data and compares it with the latest data from SA360 before making any updates in the Sheet. Following columns are validated in the process:
     *   Campaign ID
     *   Campaign Name
@@ -583,19 +625,44 @@ The URL for your Cloud Run service will be printed at the end of the deployment 
 > [!NOTE]
 > The Agent Development Kit (ADK) is an evolving framework. The Web UI's availability, features, and appearance are subject to change and are not guaranteed to remain consistent in future versions. As noted in the [official ADK documentation](https://google.github.io/adk-docs/get-started/streaming/quickstart-streaming/#try-the-agent-with-adk-web:~:text=Caution%3A%20ADK%20Web,debugging%20purposes%20only), the ADK Web interface is intended for testing and debugging purposes only.
 
-### Automated Execution via Cloud Scheduler
+### Decision Agent Workflow and Configuration
+
+The Decision Agent is the core automated component of the DSTA solution. It's triggered by Cloud Scheduler to periodically evaluate and manage campaigns based on pre-configured instructions and real-time signals.
+
+**Workflow:**
+
+#### Automated Execution via Cloud Scheduler
 
 The core of the solution is the automated execution of the **Decision Agent**, which acts as the primary decision-maker.
 
 A Google Cloud Scheduler job is deployed by Terraform to trigger this agent at a regular frequency (defined by the `googleads_scheduler_schedule` and `sa360_scheduler_schedule` parameters in your `config.yaml`). On each run, the scheduler sends a request to the agent with a preset instruction, such as: *"Run daily check based on current demand signals and business rules."*
 
-The Decision Agent then follows its instructions to:
-1.  Fetch real-time data using the **API Hub Toolset**.
-2.  Retrieve business rules from the **Firestore Toolset**.
-3.  Make a decision on what changes to make to the campaigns.
-4.  Delegate the execution of these changes to the **Google Ads Toolset** or **SA360 Toolset**.
+The Decision Agent then follows its instructions, utilizing the various toolsets described in the [Solution Overview](#solution-overview) to gather data, retrieve rules, make decisions, and execute changes.
 
 This automated workflow allows the solution to manage your campaigns hands-free based on the rules and data sources you have configured.
+
+The agent, when triggered for a specific `customer_id` and `usecase` (e.g., "GoogleAds" or "SA360"):
+
+The agent, when triggered for a specific `customer_id` and `usecase` (e.g., "GoogleAds" or "SA360"):
+
+1.  **Fetches Global Instructions:** Retrieves the overarching strategy and rules for the customer from the `CustomerInstructions` collection in Firestore, using the `customer_id` as the document ID.
+2.  **Fetches Campaign Config:** Loads the campaign-specific details from either the `GoogleAdsConfig` or `SA360Config` collection in Firestore, again using the `customer_id`. This document contains a list of campaigns to be managed.
+3.  **Iterates Through Campaigns:** Loops through each campaign defined in the configuration.
+4.  **Creates Isolated Agent Instance:** For each campaign, a new, ephemeral agent instance is created. This instance is provided with a combined instruction set:
+    *   The global instructions from `CustomerInstructions`.
+    *   The specific instructions for the current `campaignId` from the `GoogleAdsConfig` or `SA360Config`.
+5.  **Analyzes and Acts:** The campaign-specific agent instance uses the available toolsets (as detailed in the [Solution Overview](#solution-overview)) to interact with external APIs, Firestore, Google Ads, and SA360.
+6.  **Logs Outcomes:** The agent's decisions and actions are logged.
+
+**Required Firestore Configuration:**
+
+For the Decision Agent to function correctly, you must configure the `CustomerInstructions`, `GoogleAdsConfig`, and `SA360Config` collections in your Firestore database as described in the [Firestore Data Model](#firestore-data-model) section.
+
+**Example Instruction:**
+
+An instruction in Firestore might look like: "If the Pollen API for the campaign's target locations shows a 'high' pollen count for 'grass' in the next 2 days, increase the bid for this campaign by 15%. If the weather forecast predicts rain, pause the campaign."
+
+The clarity and specificity of the natural language instructions provided in Firestore are crucial for the agent to make the desired automated decisions.
 
 ## Security Best Practices
 
