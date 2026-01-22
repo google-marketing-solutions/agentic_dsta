@@ -4,12 +4,71 @@ import logging
 import os
 from typing import Any, Dict, List, Optional
 
-from agentic_dsta.tools.sa360.sa360_utils import get_sheets_service, get_reporting_api_client, compare_campaign_data
+from agentic_dsta.tools.sa360.sa360_utils import get_sheets_service, get_reporting_api_client
 from google.adk.tools.base_toolset import BaseToolset
 from google.adk.tools.function_tool import FunctionTool
 from googleapiclient.errors import HttpError
 
 logger = logging.getLogger(__name__)
+
+
+def compare_campaign_data(
+    sheet_row: Dict[str, Any], sa360_campaign: Dict[str, Any]
+) -> bool:
+  """Compares campaign data from a Google Sheet row and SA360 Reporting API.
+
+  Args:
+      sheet_row: A dictionary representing a row from a Google Sheet.
+      sa360_campaign: A dictionary representing campaign details from the SA360
+        Reporting API.
+
+  Returns:
+      True if the specified fields match, False otherwise.
+  """
+  if sheet_row.get("Campaign ID") and len(str(sheet_row.get("Campaign ID")).strip())>0 and str(sheet_row.get("Campaign ID")) != str(sa360_campaign["campaign"]["id"]):
+    return False
+  if sheet_row.get("Campaign") and len(str(sheet_row.get("Campaign")).strip())>0 and str(sheet_row.get("Campaign")) != sa360_campaign["campaign"]["name"]:
+    return False
+  if sheet_row.get("Campaign status") and len(str(sheet_row.get("Campaign status")).strip())>0 and sheet_row.get("Campaign status", "").upper() != sa360_campaign["campaign"].get("status", "").upper():
+    return False
+  if sheet_row.get("Campaign type") and len(str(sheet_row.get("Campaign type")).strip())>0 and sheet_row.get("Campaign type", "").upper() != sa360_campaign["campaign"].get("advertisingChannelType", "").upper():
+    return False
+  try:
+    if sheet_row.get("Budget"):
+      sheet_budget = float(sheet_row.get("Budget", 0.0))
+      api_budget = float(sa360_campaign["campaign"].get("budget", 0.0))
+      if abs(sheet_budget - api_budget) > 1e-6:
+        return False
+  except (ValueError, TypeError):
+    return False
+  if sheet_row.get("Bid strategy type") and len(
+      str(sheet_row.get("Bid strategy type")).strip()
+  ) > 0:
+    sheet_bid_strategy = (
+        str(sheet_row.get("Bid strategy type")).lower().replace("_", " ")
+    )
+    api_bid_strategy = (
+        str(sa360_campaign["campaign"].get("biddingStrategyType", ""))
+        .lower()
+        .replace("_", " ")
+    )
+    if sheet_bid_strategy != api_bid_strategy:
+      return False
+  if sheet_row.get("Campaign end date") and len(str(sheet_row.get("Campaign end date")).strip())>0 and sheet_row.get("Campaign end date") != sa360_campaign["campaign"].get("endDate"):
+    return False
+
+  # if sheet_row.get("Location") and len(str(sheet_row.get("Location")).strip())>0:
+  #   sheet_locations_str = sheet_row.get("Location", "")
+  #   if not isinstance(sheet_locations_str, str):
+  #     sheet_locations_str = str(sheet_locations_str)
+  #   sheet_locations = sorted(
+  #       [loc.strip() for loc in sheet_locations_str.split(",") if loc.strip()]
+  #   )
+  #   api_locations = sorted(sa360_campaign["campaign"].get("location", []))
+  #   if sheet_locations != api_locations:
+  #     return False
+
+  return True
 
 
 def get_locations(campaign_id: str, customer_id: str, service):
@@ -300,17 +359,13 @@ def update_sa360_campaign_status(
   Returns:
       A dictionary containing a success message with the updated status.
   """
-  if compare_campaign_data(get_sa360_campaign_details_sheet(campaign_id, sheet_id, sheet_name), get_sa360_campaign_details(campaign_id, customer_id)):
-    upper_status = status.upper()
-    if upper_status not in ["ENABLED", "PAUSED"]:
-      return {"error": "Status must be either 'ENABLED' or 'PAUSED'."}
-    _update_campaign_property(campaign_id, "Row Type", "Campaign", sheet_id, sheet_name)
-    return _update_campaign_property(
-        campaign_id, "Campaign status", upper_status, sheet_id, sheet_name
-    )
-  else:
-    _update_campaign_property(campaign_id, "Row Type", "", sheet_id, sheet_name)
-    raise RuntimeError("Data mismatch between Google Sheet and SA360 API. Kindly go to the Sheet and fix the data.")
+  upper_status = status.upper()
+  if upper_status not in ["ENABLED", "PAUSED"]:
+    return {"error": "Status must be either 'ENABLED' or 'PAUSED'."}
+  _update_campaign_property(campaign_id, "Row Type", "Campaign", sheet_id, sheet_name)
+  return _update_campaign_property(
+      campaign_id, "Campaign status", upper_status, sheet_id, sheet_name
+  )
 
 
 def update_sa360_campaign_geolocation(
@@ -338,76 +393,72 @@ def update_sa360_campaign_geolocation(
   Returns:
       A dictionary containing a success message describing the action taken.
   """
-  if compare_campaign_data(get_sa360_campaign_details_sheet(campaign_id, sheet_id, sheet_name), get_sa360_campaign_details(campaign_id, customer_id)):
-    if remove:
-      details = get_sa360_campaign_details(campaign_id, customer_id)
-      if "error" in details:
-        return details
+  if remove:
+    details = get_sa360_campaign_details(campaign_id, customer_id)
+    if "error" in details:
+      return details
 
-      service = get_sheets_service()
-      if not service:
-        raise RuntimeError("Failed to get Google Sheets service.")
+    service = get_sheets_service()
+    if not service:
+      raise RuntimeError("Failed to get Google Sheets service.")
 
-      try:
-        sheet = service.spreadsheets()
-        # Get header row to determine column order
-        header_result = (
-            sheet.values()
-            .get(spreadsheetId=sheet_id, range=f"{sheet_name}!1:1")
-            .execute()
-        )
-        header = header_result.get("values", [[]])[0]
-        if not header:
-          raise ValueError("Could not read header row from the sheet.")
-
-        # Check for required columns for this operation
-        if "Associated Campaign ID" not in header:
-          raise ValueError("Sheet must contain 'Associated Campaign ID' column.")
-        if "Action" not in header:
-          raise ValueError("Sheet must contain 'Action' column.")
-        if "Row Type" not in header:
-          raise ValueError("Sheet must contain 'Row Type' column.")
-
-        # Prepare the new row
-        new_row_dict = {
-            "Row Type": "excluded location",
-            "Action": "deactivate",
-            "Customer ID": details.get("Customer ID"),
-            "Campaign": details.get("Campaign"),
-            "Location": location_name,
-            "EU political ads": details.get("EU political ads"),
-            "Associated Campaign ID": campaign_id,
-        }
-
-        # Convert dict to list in the correct order for insertion
-        new_row_values = [new_row_dict.get(h, "") for h in header]
-
-        # Append the new row to the sheet
-        sheet.values().append(
-            spreadsheetId=sheet_id,
-            range=sheet_name,
-            valueInputOption="RAW",
-            body={"values": [new_row_values]},
-        ).execute()
-        logger.info(f"Geolocation removal record added for {location_name} for campaign {campaign_id}")
-        return {
-            "success": (
-                f"Geolocation removal record for '{location_name}' added for campaign"
-                f" '{campaign_id}'."
-            )
-        }
-
-      except (HttpError, ValueError, IndexError) as err:
-        logger.error(err)
-        raise RuntimeError(f"Failed to remove campaign geolocation: {err}") from err
-    else:
-      _update_campaign_property(campaign_id, "Row Type", "Campaign", sheet_id, sheet_name)
-      return _update_campaign_property(
-          campaign_id, "Location", location_name, sheet_id, sheet_name
+    try:
+      sheet = service.spreadsheets()
+      # Get header row to determine column order
+      header_result = (
+          sheet.values()
+          .get(spreadsheetId=sheet_id, range=f"{sheet_name}!1:1")
+          .execute()
       )
+      header = header_result.get("values", [[]])[0]
+      if not header:
+        raise ValueError("Could not read header row from the sheet.")
+
+      # Check for required columns for this operation
+      if "Associated Campaign ID" not in header:
+        raise ValueError("Sheet must contain 'Associated Campaign ID' column.")
+      if "Action" not in header:
+        raise ValueError("Sheet must contain 'Action' column.")
+      if "Row Type" not in header:
+        raise ValueError("Sheet must contain 'Row Type' column.")
+
+      # Prepare the new row
+      new_row_dict = {
+          "Row Type": "excluded location",
+          "Action": "deactivate",
+          "Customer ID": details.get("Customer ID"),
+          "Campaign": details.get("Campaign"),
+          "Location": location_name,
+          "EU political ads": details.get("EU political ads"),
+          "Associated Campaign ID": campaign_id,
+      }
+
+      # Convert dict to list in the correct order for insertion
+      new_row_values = [new_row_dict.get(h, "") for h in header]
+
+      # Append the new row to the sheet
+      sheet.values().append(
+          spreadsheetId=sheet_id,
+          range=sheet_name,
+          valueInputOption="RAW",
+          body={"values": [new_row_values]},
+      ).execute()
+      logger.info(f"Geolocation removal record added for {location_name} for campaign {campaign_id}")
+      return {
+          "success": (
+              f"Geolocation removal record for '{location_name}' added for campaign"
+              f" '{campaign_id}'."
+          )
+      }
+
+    except (HttpError, ValueError, IndexError) as err:
+      logger.error(err)
+      raise RuntimeError(f"Failed to remove campaign geolocation: {err}") from err
   else:
-    _update_campaign_property(campaign_id, "Row Type", "", sheet_id, sheet_name)
-    raise RuntimeError("Data mismatch between Google Sheet and SA360 API. Kindly go to the Sheet and fix the data.")
+    _update_campaign_property(campaign_id, "Row Type", "Campaign", sheet_id, sheet_name)
+    return _update_campaign_property(
+        campaign_id, "Location", location_name, sheet_id, sheet_name
+    )
 
 
 def update_sa360_campaign_budget(
@@ -427,12 +478,8 @@ def update_sa360_campaign_budget(
   Returns:
       A dictionary indicating success.
   """
-  if compare_campaign_data(get_sa360_campaign_details_sheet(campaign_id, sheet_id, sheet_name), get_sa360_campaign_details(campaign_id, customer_id)):
-    _update_campaign_property(campaign_id, "Row Type", "Campaign", sheet_id, sheet_name)
-    return _update_campaign_property(campaign_id, "Budget", budget, sheet_id, sheet_name)
-  else:
-    _update_campaign_property(campaign_id, "Row Type", "", sheet_id, sheet_name)
-    raise RuntimeError("Data mismatch between Google Sheet and SA360 API. Kindly go to the Sheet and fix the data.")
+  _update_campaign_property(campaign_id, "Row Type", "Campaign", sheet_id, sheet_name)
+  return _update_campaign_property(campaign_id, "Budget", budget, sheet_id, sheet_name)
 
 
 class SA360Toolset(BaseToolset):
@@ -454,6 +501,9 @@ class SA360Toolset(BaseToolset):
     self._update_campaign_budget_tool = FunctionTool(
         func=update_sa360_campaign_budget
     )
+    self._compare_campaign_data = FunctionTool(
+        func=compare_campaign_data
+    )
 
   async def get_tools(
       self, readonly_context: Optional[Any] = None
@@ -465,4 +515,5 @@ class SA360Toolset(BaseToolset):
         self._update_campaign_status_tool,
         self._update_campaign_geolocation_tool,
         self._update_campaign_budget_tool,
+        self._compare_campaign_data,
     ]
