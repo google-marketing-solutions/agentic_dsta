@@ -188,9 +188,9 @@ The following diagram illustrates the architecture of the Agentic Dynamic Signal
     *   And others as defined in `infra/deploy.sh`.
 *   Subsequent runs of `deploy.sh` use this service account's permissions via impersonation.
 
-*   **Enable the following APIs in your project if not already enabled:**
+*   **Enable/Provision the following APIs in your project if not already enabled:**
     *   [Compute Engine API](https://console.cloud.google.com/apis/library/compute.googleapis.com)
-    *   [Google Cloud API Hub API](https://docs.cloud.google.com/apigee/docs/apihub/provision) (Ensure "Enable Semantic search capability" is checked)
+    *   [Provision Google Cloud API Hub API](https://docs.cloud.google.com/apigee/docs/apihub/provision) (Ensure "Enable Semantic search capability" is checked)
     *   [Spreadsheets API](https://console.cloud.google.com/marketplace/product/google/sheets.googleapis.com)
     *   [SA360 Reporting API](https://console.cloud.google.com/marketplace/product/google/searchads360.googleapis.com)
     *   [Google Ads API](https://console.cloud.google.com/marketplace/product/google/googleads.googleapis.com)
@@ -215,6 +215,7 @@ This solution uses public Google APIs (Weather, Pollen, AirQuality) which requir
 2.  **Create API Key:**
     *   Go to the [Credentials page](https://console.cloud.google.com/apis/credentials) in your Google Cloud Console.
     *   Click **Create Credentials** > **API key**.
+    *   Restrict the API key to only the APIs you intend to use (e.g., Weather API, Pollen API, AirQuality API).
 3.  **Save Key:**
     *   Copy the key and save it. You will need to provide this as a secret named `GOOGLE_API_KEY` during deployment.
 
@@ -280,12 +281,12 @@ You will be prompted for all these secret values (USER_CLIENT_ID, USER_CLIENT_SE
 
 ### Service Account vs. User Credentials
 
-The application can authenticate to Google Ads and SA360 APIs using two methods:
+The application can authenticate to Google Ads, SA360 Reporting API and Google Sheet using two methods:
 
 1.  **Service Account Credentials (Default for Cloud Run):**
     *   When deployed on Google Cloud Run, the application uses the assigned service account's Application Default Credentials (`[resource_prefix]-runner@[project_id].iam.gserviceaccount.com`).
     *   This is the recommended method for automated workflows running on GCP.
-    *   Requires granting this service account appropriate access within your Google Ads and SA360 accounts.
+    *   Requires granting this service account appropriate access within your Google Ads and SA360 accounts and the Google Sheet used for bulk uploads.
 
 2.  **User Credentials (OAuth2):**
     *   This method uses the OAuth2 credentials (Client ID, Client Secret, Refresh Token) of a specific user.
@@ -296,7 +297,6 @@ The application can authenticate to Google Ads and SA360 APIs using two methods:
     *   To force the use of User Credentials even when on Cloud Run, you can set the following environment variables to `True`:
         *   `GOOGLE_ADS_FORCE_USER_CREDS=True`
         *   `SA360_FORCE_USER_CREDS=True`
-        *   `SHEETS_FORCE_USER_CREDS=True`
 
 The `agentic_dsta/tools/auth_utils.py` module contains the logic to automatically select the appropriate credentials based on the environment and these force flags.
 
@@ -640,8 +640,6 @@ A Google Cloud Scheduler job is deployed by Terraform to trigger this agent at a
 The Decision Agent then follows its instructions, utilizing the various toolsets described in the [Solution Overview](#solution-overview) to gather data, retrieve rules, make decisions, and execute changes.
 
 This automated workflow allows the solution to manage your campaigns hands-free based on the rules and data sources you have configured.
-
-The agent, when triggered for a specific `customer_id` and `usecase` (e.g., "GoogleAds" or "SA360"):
 
 The agent, when triggered for a specific `customer_id` and `usecase` (e.g., "GoogleAds" or "SA360"):
 
