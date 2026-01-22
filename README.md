@@ -493,9 +493,7 @@ For managing Search Ads 360 campaigns, this solution uses a Google Sheet-based b
     *   Campaign Type
     *   Budget
     *   Bid Strategy Type
-    *   Start Date
     *   End Date
-    *   Location
 6.  **Agent Updates the Sheet:** When the Marketing Agent decides to change the status, budget, geo-targeting of a campaign (e.g., pause it due to low demand), it will update the `Status`, `Budget`, `Location` columns respectively in your Google Sheet for the corresponding campaign.
 7.  **Agent Inserts in Sheet:** For Negative geo-targeting, agent will insert a new record in the Sheet with: 
     *   `Row Type`: excluded location name,

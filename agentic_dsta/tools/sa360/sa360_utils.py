@@ -82,65 +82,6 @@ def get_reporting_api_client():
       logging.exception(f"Error creating SA360 client: {e}")
       return None
 
-def compare_campaign_data(
-    sheet_row: Dict[str, Any], sa360_campaign: Dict[str, Any]
-) -> bool:
-  """Compares campaign data from a Google Sheet row and SA360 Reporting API.
-
-  Args:
-      sheet_row: A dictionary representing a row from a Google Sheet.
-      sa360_campaign: A dictionary representing campaign details from the SA360
-        Reporting API.
-
-  Returns:
-      True if the specified fields match, False otherwise.
-  """
-  if sheet_row.get("Campaign ID") and len(str(sheet_row.get("Campaign ID")).strip())>0 and str(sheet_row.get("Campaign ID")) != str(sa360_campaign["campaign"]["id"]):
-    return False
-  if sheet_row.get("Campaign") and len(str(sheet_row.get("Campaign")).strip())>0 and str(sheet_row.get("Campaign")) != sa360_campaign["campaign"]["name"]:
-    return False
-  if sheet_row.get("Campaign status") and len(str(sheet_row.get("Campaign status")).strip())>0 and sheet_row.get("Campaign status", "").upper() != sa360_campaign["campaign"].get("status", "").upper():
-    return False
-  if sheet_row.get("Campaign type") and len(str(sheet_row.get("Campaign type")).strip())>0 and sheet_row.get("Campaign type", "").upper() != sa360_campaign["campaign"].get("advertisingChannelType", "").upper():
-    return False
-  try:
-    if sheet_row.get("Budget"):
-      sheet_budget = float(sheet_row.get("Budget", 0.0))
-      api_budget = float(sa360_campaign["campaign"].get("budget", 0.0))
-      if abs(sheet_budget - api_budget) > 1e-6:
-        return False
-  except (ValueError, TypeError):
-    return False
-  if sheet_row.get("Bid strategy type") and len(
-      str(sheet_row.get("Bid strategy type")).strip()
-  ) > 0:
-    sheet_bid_strategy = (
-        str(sheet_row.get("Bid strategy type")).lower().replace("_", " ")
-    )
-    api_bid_strategy = (
-        str(sa360_campaign["campaign"].get("biddingStrategyType", ""))
-        .lower()
-        .replace("_", " ")
-    )
-    if sheet_bid_strategy != api_bid_strategy:
-      return False
-  if sheet_row.get("Campaign start date") and len(str(sheet_row.get("Campaign start date")).strip())>0 and sheet_row.get("Campaign start date") != sa360_campaign["campaign"].get("startDate"):
-    return False
-  if sheet_row.get("Campaign end date") and len(str(sheet_row.get("Campaign end date")).strip())>0 and sheet_row.get("Campaign end date") != sa360_campaign["campaign"].get("endDate"):
-    return False
-
-  if sheet_row.get("Location") and len(str(sheet_row.get("Location")).strip())>0:
-    sheet_locations_str = sheet_row.get("Location", "")
-    if not isinstance(sheet_locations_str, str):
-      sheet_locations_str = str(sheet_locations_str)
-    sheet_locations = sorted(
-        [loc.strip() for loc in sheet_locations_str.split(",") if loc.strip()]
-    )
-    api_locations = sorted(sa360_campaign["campaign"].get("location", []))
-    if sheet_locations != api_locations:
-      return False
-
-  return True
 
 if __name__ == '__main__':
     # This block is for local testing and demonstration.
