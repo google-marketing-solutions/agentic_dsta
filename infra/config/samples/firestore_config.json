@@ -1,18 +1,18 @@
 [
   {
     "collection_name": "GoogleAdsConfig",
-    "document_id": "2518446444",
+    "document_id": "1234567891",
     "data": {
-      "customerId": 2518446444,
-      "logincustomerid": "6963536729",
+      "customerId": 1234567890,
+      "logincustomerid": "0987654321",
       "instruction": "Workflow ID: standard_opt_v1 Description: Standard optimization workflow for campaigns.",
       "campaigns": [
         {
-          "campaignId": 23429734705,
+          "campaignId": 1122334455,
           "instruction": "If pollen count is High (>=1) AND weather is not 'Rain', set status to ENABLED, budget to 500, and bid to 4.00. If it is Raining OR pollen is Low (<1), set status to PAUSED."
         },
         {
-          "campaignId": 23435571990,
+          "campaignId": 5566778899,
           "instruction": "If current temperature is greater than 24°C for the configured locations, remove that location from the campaign. Use locations configured in firestore to get latitude and longitude data."
         }
       ],
@@ -106,17 +106,17 @@
   },
   {
     "collection_name": "SA360Config",
-    "document_id": "6621513488",
+    "document_id": "1234567890",
     "data": {
       "SheetId": "1-GLKv82cYfMOfRgofz_PCgMgX05uxUZKJhtrkwAnvcA",
       "SheetName": "Sheet0",
       "campaigns": [
         {
-          "campaignId": 20159544373,
+          "campaignId": 1122334455,
           "instructions": "If pollen level for location: longitude 35.32 and latitude 32.32 is equal to 1 for next 1 day, set the budget to 3"
         },
         {
-          "campaignId": 20159544424,
+          "campaignId": 5566778899,
           "instructions": "If pollen level for location: longitude 35.32 and latitude 32.32 is equal to 1 for next 1 day, set the budget to 10"
         }
       ],
