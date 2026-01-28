@@ -1,4 +1,4 @@
-# Agentic Dynamic Signal Target Ads (DSTA)
+# Agentic Dynamic Signal Target Ads (ADSTA)
 
 Copyright 2026 Google LLC
 
@@ -65,7 +65,7 @@ This is not an officially supported Google product. This project is not eligible
 
 ## Introduction
 
-The Agentic Dynamic Signal Target Ads (DSTA) solution is a powerful, automated marketing framework designed to help marketers forecast and activate advertising campaigns based on real-time demand signals. It uses an agentic architecture to integrate data from various sources (Google Ads, SA360, Weather, Pollen, etc.) and automate campaign management decisions.
+The Agentic Dynamic Signal Target Ads (ADSTA) solution is a powerful, automated marketing framework designed to help marketers forecast and activate advertising campaigns based on real-time demand signals. It uses an agentic architecture to integrate data from various sources (Google Ads, SA360, Weather, Pollen, etc.) and automate campaign management decisions.
 
 This guide provides all the necessary information for deploying, configuring, and managing the Agentic DSTA infrastructure on Google Cloud Platform.
 
@@ -366,7 +366,7 @@ The solution runs on Google Cloud Run and uses a dedicated Service Account for i
 1.  **Identify the Service Account Email:**
     After deployment (or based on your config), the Service Account email will be:
     `[resource_prefix]-runner@[project_id].iam.gserviceaccount.com`
-    *   Example: `dsta-runner@my-project-id.iam.gserviceaccount.com`
+    *   Example: `adsta-runner@my-project-id.iam.gserviceaccount.com`
 
 2.  **Add to Google Ads:**
     *   Log in to your Google Ads account.
@@ -485,7 +485,7 @@ For managing Search Ads 360 campaigns, this solution uses a Google Sheet-based b
     *   Click on Download button (right next to Download template (Optional) text)
 3.  **Additional Column:** Add an additional column named `Associated Campaign ID` to the Google sheet for Negative targeting (removing) of locations.
 4.  **Update Firestore config:** Add `SheetId` and `SheetName` to the firestore collection `SA360Config` for the Google Sheet with customer id as the document id.
-5.  **Share the Sheet:** You MUST share the Google Sheet with the Cloud Run service account: `[resource_prefix]-runner@[project_id].iam.gserviceaccount.com` (e.g., `dsta-runner@my-project-id.iam.gserviceaccount.com`) giving it at least **Editor** permissions. This allows the application to read and write to the sheet.
+5.  **Share the Sheet:** You MUST share the Google Sheet with the Cloud Run service account: `[resource_prefix]-runner@[project_id].iam.gserviceaccount.com` (e.g., `adsta-runner@my-project-id.iam.gserviceaccount.com`) giving it at least **Editor** permissions. This allows the application to read and write to the sheet.
 5.  **Data sync validation:** As a prerequisite, an automated process validates the sheets data and compares it with the latest data from SA360 before making any updates in the Sheet. Following columns are validated in the process:
     *   Campaign ID
     *   Campaign Name
@@ -625,7 +625,7 @@ The URL for your Cloud Run service will be printed at the end of the deployment 
 
 ### Decision Agent Workflow and Configuration
 
-The Decision Agent is the core automated component of the DSTA solution. It's triggered by Cloud Scheduler to periodically evaluate and manage campaigns based on pre-configured instructions and real-time signals.
+The Decision Agent is the core automated component of the Agentic DSTA solution. It's triggered by Cloud Scheduler to periodically evaluate and manage campaigns based on pre-configured instructions and real-time signals.
 
 **Workflow:**
 
