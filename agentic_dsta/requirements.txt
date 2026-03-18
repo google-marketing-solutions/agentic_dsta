@@ -2007,9 +2007,9 @@ networkx==3.6 \
     --hash=sha256:285276002ad1f7f7da0f7b42f004bcba70d381e936559166363707fdad3d72ad \
     --hash=sha256:cdb395b105806062473d3be36458d8f1459a4e4b98e236a66c3a48996e07684f
     # via llama-index-core
-nltk==3.9.2 \
-    --hash=sha256:0f409e9b069ca4177c1903c3e843eef90c7e92992fa4931ae607da6de49e1419 \
-    --hash=sha256:1e209d2b3009110635ed9709a67a1a3e33a10f799490fa71cf4bec218c11c88a
+nltk==3.9.3 \
+    --hash=sha256:60b3db6e9995b3dd976b1f0fa7dec22069b2677e759c28eb69b62ddd44870522 \
+    --hash=sha256:cb5945d6424a98d694c2b9a0264519fab4363711065a46aa0ae7a2195b92e71f
     # via
     #   llama-index
     #   llama-index-core
