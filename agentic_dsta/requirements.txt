@@ -1655,9 +1655,9 @@ langsmith==0.6.3 \
     # via
     #   langchain
     #   langchain-core
-litellm==1.81.11 \
-    --hash=sha256:06a66c24742e082ddd2813c87f40f5c12fe7baa73ce1f9457eaf453dc44a0f65 \
-    --hash=sha256:fc55aceafda325bd5f704ada61c8be5bd322e6dfa5f8bdcab3290b8732c5857e
+litellm==1.83.0 \
+    --hash=sha256:860bebc76c4bb27b4cf90b4a77acd66dba25aced37e3db98750de8a1766bfb7a \
+    --hash=sha256:88c536d339248f3987571493015784671ba3f193a328e1ea6780dbebaa2094a8
     # via google-cloud-aiplatform
 llama-cloud==0.1.35 \
     --hash=sha256:200349d5d57424d7461f304cdb1355a58eea3e6ca1e6b0d75c66b2e937216983 \
