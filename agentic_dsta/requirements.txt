@@ -1608,13 +1608,13 @@ jsonschema-specifications==2025.9.1 \
     --hash=sha256:98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe \
     --hash=sha256:b540987f239e745613c7a9176f3edb72b832a4ac465cf02712288397832b5e8d
     # via jsonschema
-langchain==0.3.27 \
-    --hash=sha256:7b20c4f338826acb148d885b20a73a16e410ede9ee4f19bb02011852d5f98798 \
-    --hash=sha256:aa6f1e6274ff055d0fd36254176770f356ed0a8994297d1df47df341953cec62
+langchain==0.3.30 \
+    --hash=sha256:06599ec90fb550e0118b0ceab737667d2c0891fcc62ffce2058d21c945844448 \
+    --hash=sha256:37e6fcce92faf70cc7bac23739d13d6c3b9a3282da4dbcc06cb7e78330ed406a
     # via google-cloud-aiplatform
-langchain-core==0.3.80 \
-    --hash=sha256:2141e3838d100d17dce2359f561ec0df52c526bae0de6d4f469f8026c5747456 \
-    --hash=sha256:29636b82513ab49e834764d023c4d18554d3d719a185d37b019d0a8ae948c6bb
+langchain-core==0.3.86 \
+    --hash=sha256:671cbc96a325fe47f7dbab421236ada2d437bc4bfad0038102264885d0b462e2 \
+    --hash=sha256:7d2a1c50d2d2a139dbc6465cd339f32d14aa43db5ac9bd232e5b567a238709e8
     # via
     #   google-cloud-aiplatform
     #   langchain
@@ -3897,7 +3897,9 @@ uuid-utils==0.14.0 \
     --hash=sha256:eff57e8a5d540006ce73cf0841a643d445afe78ba12e75ac53a95ca2924a56be \
     --hash=sha256:f6695c0bed8b18a904321e115afe73b34444bc8451d0ce3244a1ec3b84deb0e5 \
     --hash=sha256:fc5bac21e9933ea6c590433c11aa54aaca599f690c08069e364eb13a12f670b4
-    # via langsmith
+    # via
+    #   langchain-core
+    #   langsmith
 uvicorn==0.38.0 \
     --hash=sha256:48c0afd214ceb59340075b4a052ea1ee91c16fbc2a9b1469cca0e54566977b02 \
     --hash=sha256:fd97093bdd120a2609fc0d3afe931d4d4ad688b6e75f0f929fde1bc36fe0e91d
