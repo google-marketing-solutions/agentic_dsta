@@ -1655,9 +1655,9 @@ langsmith==0.6.3 \
     # via
     #   langchain
     #   langchain-core
-litellm==1.81.11 \
-    --hash=sha256:06a66c24742e082ddd2813c87f40f5c12fe7baa73ce1f9457eaf453dc44a0f65 \
-    --hash=sha256:fc55aceafda325bd5f704ada61c8be5bd322e6dfa5f8bdcab3290b8732c5857e
+litellm==1.84.0 \
+    --hash=sha256:2a58d6041e6aa27d1a28dc8d8828ab500fef1a00ef74ca65e60899035010c2f2 \
+    --hash=sha256:b8ad0cbea11a5941b18d5af973017a340abd3d3ab41cb86e5401b970626d71a6
     # via google-cloud-aiplatform
 llama-cloud==0.1.35 \
     --hash=sha256:200349d5d57424d7461f304cdb1355a58eea3e6ca1e6b0d75c66b2e937216983 \
@@ -2161,9 +2161,9 @@ oauthlib==3.3.1 \
     --hash=sha256:0f0f8aa759826a193cf66c12ea1af1637f87b9b4622d46e866952bb022e538c9 \
     --hash=sha256:88119c938d2b8fb88561af5f6ee0eec8cc8d552b7bb1f712743136eb7523b7a1
     # via requests-oauthlib
-openai==2.8.1 \
-    --hash=sha256:c6c3b5a04994734386e8dad3c00a393f56d3b68a27cd2e8acae91a59e4122463 \
-    --hash=sha256:cb1b79eef6e809f6da326a7ef6038719e35aa944c42d081807bfa1be8060f15f
+openai==2.43.0 \
+    --hash=sha256:65a670b54fadf2268c9e1330133373c963eb779ee969e5cbad419ec2c21dce97 \
+    --hash=sha256:e74d238200a26868977002190fb6631613480a93dfe0c9c982e77021ed60a017
     # via
     #   litellm
     #   llama-index-embeddings-openai
