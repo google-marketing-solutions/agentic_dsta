@@ -9,7 +9,7 @@ google-adk[eval]
 google-cloud-firestore
 google-auth-oauthlib
 python-dotenv
-setuptools==80.9.0
+setuptools==84.1.0
 pytest
 coverage
 pytest-mock
