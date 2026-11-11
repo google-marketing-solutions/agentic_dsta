@@ -4,8 +4,8 @@ a2a-sdk>=0.3.4
 requests
 google
 google-ads
-google-adk
-google-adk[eval]
+google-adk>=1.28.1,<2.0.0
+google-adk[eval]>=1.28.1,<2.0.0
 google-cloud-firestore
 google-auth-oauthlib
 python-dotenv
