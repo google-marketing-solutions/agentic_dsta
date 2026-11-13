@@ -23,6 +23,17 @@ variable "region" {
   default     = "us-central1"
 }
 
+variable "environment" {
+  description = "Deployment environment ('dev', 'staging', or 'prod'). allow_unauthenticated = true is refused outside 'dev'."
+  type        = string
+  default     = "prod"
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], lower(var.environment))
+    error_message = "environment must be one of: dev, staging, prod."
+  }
+}
+
 variable "location" {
   description = "The location/region for Cloud Run service (defaults to var.region)"
   type        = string
@@ -54,7 +65,7 @@ variable "container_port" {
 }
 
 variable "allow_unauthenticated" {
-  description = "If true, allows unauthenticated invocations to the service (set to true for public access)"
+  description = "If true, allows unauthenticated invocations to the Cloud Run service. Refused outside dev environments."
   type        = bool
   default     = false
 }
