@@ -385,8 +385,9 @@ The following table describes each parameter in the `config.yaml` file:
 | ------------------------------ | ------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
 | `project_id`                   | **Required.** Your Google Cloud Project ID.                                                              | `"[YOUR_PROJECT_ID]"`                        |
 | `region`                       | The primary Google Cloud region for deploying resources.                                                | `"us-central1"`                               |
+| `environment`                  | Deployment environment (`"dev"`, `"staging"`, or `"prod"`). Defaults to `"prod"`.                       | `"prod"`                                      |
 | `resource_prefix`              | A prefix for all resource names (Service Accounts, Buckets, etc.).                                      | `"gta-demo"`                                  |
-| `allow_unauthenticated`        | If `true`, the Cloud Run service will be publicly accessible. Set to `false` for production.           | `false`                                       |
+| `allow_unauthenticated`        | Defaults to `false` (IAM/OIDC required). Setting `true` is rejected outside `environment: "dev"`.       | `false`                                       |
 | `firestore_database_type`      | The type of Firestore database to create (`FIRESTORE_NATIVE` or `DATASTORE_MODE`).                        | `"FIRESTORE_NATIVE"`                          |
 | `additional_secrets`           | List of extra secrets to manage (e.g., `GOOGLE_API_KEY`).                                               | `["GOOGLE_API_KEY"]`                          |
 | `googleads_scheduler_schedule` | The cron schedule for triggering the Google Ads agent.                                                  | `"0 0 * * *"`                                 |

@@ -107,17 +107,20 @@ module "cloud_run_service" {
   service_name          = local.service_name
   project_id            = var.project_id
   location              = var.location != "" ? var.location : var.region
+  environment           = var.environment
   image_url             = var.image_url != "" ? var.image_url : var.run_service_default_image_url
   container_port        = var.container_port
   allow_unauthenticated = var.allow_unauthenticated
   service_account_email = google_service_account.run_sa.email
 
   env_vars = merge(var.run_service_env_vars, {
-    GOOGLE_CLOUD_PROJECT              = var.project_id
-    GOOGLE_CLOUD_LOCATION             = var.region
-    FIRESTORE_DB                      = local.firestore_database_name
+    GOOGLE_CLOUD_PROJECT            = var.project_id
+    GOOGLE_CLOUD_LOCATION           = var.region
+    ENVIRONMENT                     = var.environment
+    FIRESTORE_DB                    = local.firestore_database_name
     GOOGLE_ADS_FORCE_USER_CREDS     = var.google_ads_force_user_creds
     SA360_FORCE_USER_CREDS          = var.sa360_force_user_creds
+    SCHEDULER_SERVICE_ACCOUNT_EMAIL = google_service_account.run_sa.email
   })
   secret_env_vars = { for secret in module.secret_manager.secret_ids : secret => { name = secret, version = "latest" } }
   depends_on = [google_project_service.apis, module.secret_manager]
