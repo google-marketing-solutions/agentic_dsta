@@ -1,10 +1,13 @@
 # Google Cloud Project Configuration
 project_id: "YOUR_PROJECT_ID"
 region: "YOUR_REGION"
+environment: "prod"
 
 # Resource Naming
 resource_prefix: "YOUR_RESOURCE_PREFIX"
-allow_unauthenticated: true
+# Require IAM-authenticated Cloud Run invocation by default (Cloud Scheduler uses OIDC).
+# Setting allow_unauthenticated: true is rejected outside environment: "dev".
+allow_unauthenticated: false
 
 # Firestore Configuration
 firestore_database_type: "FIRESTORE_NATIVE"

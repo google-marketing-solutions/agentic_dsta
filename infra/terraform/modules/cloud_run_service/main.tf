@@ -58,10 +58,26 @@ resource "google_cloud_run_v2_service" "default" {
     service_account = var.service_account_email
   }
 
-
+  lifecycle {
+    precondition {
+      condition     = !var.allow_unauthenticated || lower(var.environment) == "dev"
+      error_message = "allow_unauthenticated = true is prohibited in non-dev environments (set allow_unauthenticated = false or environment = \"dev\")."
+    }
+  }
 }
 
-# IAM policy for invoker role
+# IAM policy granting service-level invocation to the runtime/scheduler SA when private
+resource "google_cloud_run_v2_service_iam_member" "invoker_service_account" {
+  provider = google-beta
+  count    = !var.allow_unauthenticated && var.service_account_email != null && var.service_account_email != "" ? 1 : 0
+  project  = google_cloud_run_v2_service.default.project
+  location = google_cloud_run_v2_service.default.location
+  name     = google_cloud_run_v2_service.default.name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${var.service_account_email}"
+}
+
+# IAM policy for public invoker role (restricted strictly to dev environments)
 resource "google_cloud_run_v2_service_iam_member" "invoker_all" {
   provider = google-beta
   count    = var.allow_unauthenticated ? 1 : 0
@@ -70,6 +86,13 @@ resource "google_cloud_run_v2_service_iam_member" "invoker_all" {
   name     = google_cloud_run_v2_service.default.name
   role     = "roles/run.invoker"
   member   = "allUsers"
+
+  lifecycle {
+    precondition {
+      condition     = !var.allow_unauthenticated || lower(var.environment) == "dev"
+      error_message = "Granting roles/run.invoker to allUsers is prohibited outside dev environments."
+    }
+  }
 }
 
 

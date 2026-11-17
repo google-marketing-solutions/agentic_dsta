@@ -27,6 +27,17 @@ variable "location" {
   type        = string
 }
 
+variable "environment" {
+  description = "Deployment environment ('dev', 'staging', or 'prod'). allow_unauthenticated = true is refused outside 'dev'."
+  type        = string
+  default     = "prod"
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], lower(var.environment))
+    error_message = "environment must be one of: dev, staging, prod."
+  }
+}
+
 variable "image_url" {
   description = "Full URL of the container image"
   type        = string
